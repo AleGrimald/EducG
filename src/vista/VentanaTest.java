@@ -109,6 +109,9 @@ public class VentanaTest extends VentanaBase {
     }
 
     private Component construirPreguntas() {
+        JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        contenedorCentral.setBackground(new Color(245, 248, 252));
+
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
@@ -127,7 +130,9 @@ public class VentanaTest extends VentanaBase {
 
         contenido.add(Box.createVerticalGlue());
 
-        JScrollPane scroll = new JScrollPane(contenido);
+        contenedorCentral.add(contenido);
+
+        JScrollPane scroll = new JScrollPane(contenedorCentral);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;

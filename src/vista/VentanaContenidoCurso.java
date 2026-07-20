@@ -88,6 +88,9 @@ public class VentanaContenidoCurso extends VentanaBase {
     }
 
     private Component construirContenido() {
+        JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        contenedorCentral.setBackground(new Color(245, 248, 252));
+
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
@@ -113,7 +116,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         contenido.add(Box.createVerticalStrut(14));
 
         JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + leccionActual.getContenido() + "</body></html>");
-        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
         contenidoLbl.setAlignmentX(LEFT_ALIGNMENT);
         contenido.add(contenidoLbl);
@@ -121,7 +124,9 @@ public class VentanaContenidoCurso extends VentanaBase {
 
         contenido.add(construirFilaBotones());
 
-        JScrollPane scroll = new JScrollPane(contenido);
+        contenedorCentral.add(contenido);
+
+        JScrollPane scroll = new JScrollPane(contenedorCentral);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;
