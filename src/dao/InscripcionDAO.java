@@ -16,4 +16,9 @@ public interface InscripcionDAO {
 
     /** @return inscripciones activas del usuario, más recientes primero */
     List<Inscripcion> listarPorUsuario(String email) throws SQLException;
+
+    /** @return la lección actual (progreso) en que quedó el usuario en este curso, o 0 si no hay registro */
+    int obtenerProgreso(String email, String cursoTitulo) throws SQLException;
+
+    void actualizarProgreso(String email, String cursoTitulo, int leccionActual) throws SQLException;
 }

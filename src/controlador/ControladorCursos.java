@@ -36,4 +36,12 @@ public class ControladorCursos {
     public boolean estaInscripto(String email, String cursoTitulo) throws SQLException {
         return servicioInscripcion.estaInscripto(email, cursoTitulo);
     }
+
+    public int obtenerProgreso(String email, String cursoTitulo) throws SQLException {
+        return servicioInscripcion.obtenerProgreso(email, cursoTitulo);
+    }
+
+    public void actualizarProgreso(String email, String cursoTitulo, int leccionActual) throws SQLException {
+        servicioInscripcion.actualizarProgreso(email, cursoTitulo, leccionActual);
+    }
 }

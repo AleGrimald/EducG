@@ -31,4 +31,12 @@ public class ServicioInscripcion {
     public List<Inscripcion> obtenerCursosInscriptos(String email) throws SQLException {
         return inscripcionDAO.listarPorUsuario(email);
     }
+
+    public int obtenerProgreso(String email, String cursoTitulo) throws SQLException {
+        return inscripcionDAO.obtenerProgreso(email, cursoTitulo);
+    }
+
+    public void actualizarProgreso(String email, String cursoTitulo, int leccionActual) throws SQLException {
+        inscripcionDAO.actualizarProgreso(email, cursoTitulo, leccionActual);
+    }
 }

@@ -1,9 +1,10 @@
 package vista;
 
+import controlador.ControladorCursos;
 import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.Leccion;
-import vista.componentes.PanelDesplegable;
+import vista.componentes.DialogoPersonalizado;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -12,14 +13,17 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
-/** Muestra el contenido de un curso (lecciones desplegables) al que el usuario ya está inscripto. */
+/** Muestra el contenido de un curso (lecciones paginadas) al que el usuario ya está inscripto. */
 public class VentanaContenidoCurso extends VentanaBase {
 
-    private final ControladorTest controlador = new ControladorTest();
+    private final ControladorCursos controladorCursos = new ControladorCursos();
+    private final ControladorTest controladorTest = new ControladorTest();
     private final Curso curso;
     private final String emailUsuario;
     private final String nombreUsuario;
     private final Runnable alVolver;
+    private int leccionIndexActual = 0;
+    private JPanel panelContenido;
 
     public VentanaContenidoCurso(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
         super("Educ G – " + curso.getTitulo(), EXIT_ON_CLOSE);
@@ -27,7 +31,17 @@ public class VentanaContenidoCurso extends VentanaBase {
         this.emailUsuario = emailUsuario;
         this.nombreUsuario = nombreUsuario;
         this.alVolver = alVolver;
+        cargarProgreso();
         construirUI();
+    }
+
+    private void cargarProgreso() {
+        try {
+            leccionIndexActual = controladorCursos.obtenerProgreso(emailUsuario, curso.getTitulo());
+            leccionIndexActual = Math.max(0, Math.min(leccionIndexActual, curso.getLecciones().size() - 1));
+        } catch (Exception ignored) {
+            leccionIndexActual = 0;
+        }
     }
 
     private void construirUI() {
@@ -36,7 +50,9 @@ public class VentanaContenidoCurso extends VentanaBase {
         setContentPane(raiz);
 
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
-        raiz.add(construirContenido(), BorderLayout.CENTER);
+        panelContenido = new JPanel(new BorderLayout());
+        raiz.add(panelContenido, BorderLayout.CENTER);
+        reconstruirContenido();
     }
 
     private JPanel construirEncabezado() {
@@ -71,7 +87,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         return encabezado;
     }
 
-    private JScrollPane construirContenido() {
+    private Component construirContenido() {
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
@@ -80,21 +96,30 @@ public class VentanaContenidoCurso extends VentanaBase {
         contenido.add(construirBarraEvaluacion());
         contenido.add(Box.createVerticalStrut(24));
 
-        JLabel tituloSeccion = new JLabel("Contenido del curso");
-        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        tituloSeccion.setForeground(EstiloUI.TEXTO_PRIMARIO);
-        tituloSeccion.setAlignmentX(LEFT_ALIGNMENT);
-        contenido.add(tituloSeccion);
+        int total = curso.getLecciones().size();
+        JLabel numeroLbl = new JLabel("Lección " + (leccionIndexActual + 1) + " de " + total);
+        numeroLbl.setFont(EstiloUI.FUENTE_PEQUENA);
+        numeroLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        numeroLbl.setAlignmentX(LEFT_ALIGNMENT);
+        contenido.add(numeroLbl);
+        contenido.add(Box.createVerticalStrut(8));
+
+        Leccion leccionActual = curso.getLecciones().get(leccionIndexActual);
+        JLabel tituloLeccion = new JLabel(leccionActual.getTitulo());
+        tituloLeccion.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        tituloLeccion.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        tituloLeccion.setAlignmentX(LEFT_ALIGNMENT);
+        contenido.add(tituloLeccion);
         contenido.add(Box.createVerticalStrut(14));
 
-        for (Leccion leccion : curso.getLecciones()) {
-            PanelDesplegable panel = new PanelDesplegable(leccion.getTitulo(), leccion.getContenido());
-            panel.setAlignmentX(LEFT_ALIGNMENT);
-            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-            contenido.add(panel);
-            contenido.add(Box.createVerticalStrut(10));
-        }
+        JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + leccionActual.getContenido() + "</body></html>");
+        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        contenidoLbl.setAlignmentX(LEFT_ALIGNMENT);
+        contenido.add(contenidoLbl);
         contenido.add(Box.createVerticalGlue());
+
+        contenido.add(construirFilaBotones());
 
         JScrollPane scroll = new JScrollPane(contenido);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -102,11 +127,57 @@ public class VentanaContenidoCurso extends VentanaBase {
         return scroll;
     }
 
+    private JPanel construirFilaBotones() {
+        JPanel fila = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 0));
+        fila.setOpaque(false);
+        fila.setAlignmentX(LEFT_ALIGNMENT);
+
+        int total = curso.getLecciones().size();
+        boolean esUltima = leccionIndexActual == total - 1;
+        boolean esPrimera = leccionIndexActual == 0;
+
+        JButton botonAnterior = FabricaUI.crearBotonSecundario("← Anterior");
+        botonAnterior.setEnabled(!esPrimera);
+        botonAnterior.addActionListener(e -> {
+            leccionIndexActual = Math.max(0, leccionIndexActual - 1);
+            guardarProgreso();
+            reconstruirContenido();
+        });
+        fila.add(botonAnterior);
+
+        JButton botonSiguiente = FabricaUI.crearBotonPrimario(esUltima ? "Hacer Test" : "Siguiente →");
+        botonSiguiente.addActionListener(e -> {
+            if (esUltima) {
+                abrirTest();
+            } else {
+                leccionIndexActual = Math.min(total - 1, leccionIndexActual + 1);
+                guardarProgreso();
+                reconstruirContenido();
+            }
+        });
+        fila.add(botonSiguiente);
+
+        return fila;
+    }
+
+    private void guardarProgreso() {
+        try {
+            controladorCursos.actualizarProgreso(emailUsuario, curso.getTitulo(), leccionIndexActual);
+        } catch (Exception ignored) {}
+    }
+
+    private void reconstruirContenido() {
+        panelContenido.removeAll();
+        panelContenido.add(construirContenido(), BorderLayout.CENTER);
+        panelContenido.revalidate();
+        panelContenido.repaint();
+    }
+
     /** Tarjeta con el estado del test final (aprobado/no rendido) y los botones Hacer Test / Ver Certificado. */
     private JPanel construirBarraEvaluacion() {
         int puntajeObtenido = -1;
         try {
-            puntajeObtenido = controlador.obtenerMejorPuntaje(emailUsuario, curso.getTitulo());
+            puntajeObtenido = controladorTest.obtenerMejorPuntaje(emailUsuario, curso.getTitulo());
         } catch (Exception ignored) {}
         final int mejorPuntaje = puntajeObtenido;
         boolean aprobado = mejorPuntaje >= ControladorTest.puntajeAprobacion();

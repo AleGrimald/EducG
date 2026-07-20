@@ -20,7 +20,7 @@ El código sigue el patrón **Modelo-Vista-Controlador**, con nombres de paquete
 2. **`vista`** — Ventanas Swing (JFrame)
    - `VentanaLogin`, `VentanaRegistro`, `VentanaCursos`, `VentanaPanelUsuario`, `VentanaContenidoCurso`, `VentanaTest`, `VentanaCertificado`
    - `VentanaBase` (abstracta): factoriza título/cierre/maximizado común — **herencia**
-   - `vista.componentes`: `TarjetaCurso`, `PanelDesplegable` (acordeón de lecciones), `DialogoPersonalizado`, `BotonRedondeado`, `FiltroCaracteres`
+   - `vista.componentes`: `TarjetaCurso`, `BarraProgreso` (indicador visual para el test), `DialogoPersonalizado`, `BotonRedondeado`, `FiltroCaracteres`
    - `vista.estilo`: `EstiloUI` (paleta/fuentes/tamaños), `FabricaUI` (fábrica de componentes)
    - Construcción de UI en métodos `construirUI()`; los manejadores de eventos SOLO llaman al controlador — nunca SQL ni validación embebida en la vista
 
@@ -67,7 +67,7 @@ Resultado (objeto de modelo/boolean) vuelve hasta la Vista; se muestra
 | **usuarios** | User accounts | id (PK), email (UNIQUE), password_hash (salt:sha256), nombre, apellido, dni (BIGINT, NOT NULL), telefono (VARCHAR(20), NOT NULL), activo (soft delete) |
 | **cursos** | Course catalog | id, emoji, titulo, descripcion, duracion |
 | **curso_contenidos** | Course lessons (title + body, resolves 1NF) | curso_id (FK), orden, topico, contenido (TEXT — texto completo de la lección) |
-| **inscripciones** | User-course enrollments (N:M) | usuario_id (FK), curso_id (FK), fecha_inscripcion, activo |
+| **inscripciones** | User-course enrollments (N:M) | usuario_id (FK), curso_id (FK), fecha_inscripcion, activo, leccion_actual (TINYINT, progreso guardado en qué lección paró) |
 | **test_resultados** | Test attempt scores | usuario_id (FK), curso_id (FK), test_nombre, puntaje, fecha |
 | **test_preguntas** | Quiz question bank (10 per course) | curso_id (FK), enunciado, orden |
 | **test_opciones** | Multiple-choice options per question | pregunta_id (FK), texto, es_correcta, orden |
@@ -127,6 +127,8 @@ Conveción de nombres: `sp_<accion>_<entidad>` (`alta` = crear, `modificar` = ac
 | `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — OUT con el id del intento creado (usado para asociar las respuestas) |
 | `sp_alta_respuesta_test` | `ResultadoTestDAOJdbc.registrarRespuesta()` |
 | `sp_obtener_mejor_puntaje_curso` | `ResultadoTestDAOJdbc.obtenerMejorPuntaje()` — define si el curso aparece "Aprobado" |
+| `sp_obtener_progreso_inscripcion` | `InscripcionDAOJdbc.obtenerProgreso()` — lee la lección actual guardada para un usuario+curso |
+| `sp_modificar_progreso_inscripcion` | `InscripcionDAOJdbc.actualizarProgreso()` — guarda el índice de lección en que quedó el usuario |
 
 Definidos en `stored_procedures.sql` + `schema.sql` (base) y en `stored_procedures_test.sql`
 (catálogo DB-driven + test/certificado, ver más arriba). Si agregás o cambiás un

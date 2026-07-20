@@ -4,6 +4,7 @@ import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.OpcionTest;
 import modelo.PreguntaTest;
+import vista.componentes.BarraProgreso;
 import vista.componentes.DialogoPersonalizado;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -14,9 +15,7 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +29,11 @@ public class VentanaTest extends VentanaBase {
 
     private List<PreguntaTest> preguntas = new ArrayList<>();
     private String errorCarga;
-    private final Map<Integer, ButtonGroup> gruposPorPregunta = new LinkedHashMap<>();
+    private int preguntaIndexActual = 0;
+    private final Map<Integer, Integer> respuestasSeleccionadas = new HashMap<>();
+    private BarraProgreso barraProgreso;
+    private JLabel textoPreguntaLbl;
+    private JPanel panelPreguntas;
 
     public VentanaTest(Curso curso, String emailUsuario, Runnable alVolver) {
         super("Educ G – Test: " + curso.getTitulo(), EXIT_ON_CLOSE);
@@ -56,13 +59,19 @@ public class VentanaTest extends VentanaBase {
         setContentPane(raiz);
 
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
-        raiz.add(construirPreguntas(), BorderLayout.CENTER);
+        panelPreguntas = new JPanel(new BorderLayout());
+        raiz.add(panelPreguntas, BorderLayout.CENTER);
+        reconstruirPreguntas();
     }
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(false);
-        encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
+        encabezado.setBorder(new EmptyBorder(24, 32, 12, 32));
+        encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
+
+        JPanel fila1 = new JPanel(new BorderLayout());
+        fila1.setOpaque(false);
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
@@ -72,13 +81,13 @@ public class VentanaTest extends VentanaBase {
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
         tituloLbl.setForeground(Color.WHITE);
 
-        JLabel ayudaLbl = new JLabel("Respondé las " + preguntas.size() + " preguntas y presioná Finalizar.");
-        ayudaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        ayudaLbl.setForeground(new Color(200, 220, 255));
+        textoPreguntaLbl = new JLabel("Pregunta 1 de " + preguntas.size());
+        textoPreguntaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
+        textoPreguntaLbl.setForeground(new Color(200, 220, 255));
 
         bloqueTitulo.add(tituloLbl);
         bloqueTitulo.add(Box.createVerticalStrut(4));
-        bloqueTitulo.add(ayudaLbl);
+        bloqueTitulo.add(textoPreguntaLbl);
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("← Cancelar");
         botonVolver.addActionListener(e -> {
@@ -86,12 +95,20 @@ public class VentanaTest extends VentanaBase {
             alVolver.run();
         });
 
-        encabezado.add(bloqueTitulo, BorderLayout.WEST);
-        encabezado.add(botonVolver, BorderLayout.EAST);
+        fila1.add(bloqueTitulo, BorderLayout.WEST);
+        fila1.add(botonVolver, BorderLayout.EAST);
+
+        encabezado.add(fila1);
+        encabezado.add(Box.createVerticalStrut(12));
+
+        barraProgreso = new BarraProgreso();
+        barraProgreso.setProgreso(1, preguntas.size());
+        encabezado.add(barraProgreso);
+
         return encabezado;
     }
 
-    private JScrollPane construirPreguntas() {
+    private Component construirPreguntas() {
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
@@ -102,27 +119,58 @@ public class VentanaTest extends VentanaBase {
             errLbl.setForeground(EstiloUI.ERROR);
             errLbl.setAlignmentX(LEFT_ALIGNMENT);
             contenido.add(errLbl);
+        } else if (!preguntas.isEmpty()) {
+            contenido.add(construirTarjetaPregunta(preguntaIndexActual + 1, preguntas.get(preguntaIndexActual)));
+            contenido.add(Box.createVerticalStrut(24));
+            contenido.add(construirFilaBotonesNavegacion());
         }
 
-        int numero = 1;
-        for (PreguntaTest pregunta : preguntas) {
-            contenido.add(construirTarjetaPregunta(numero, pregunta));
-            contenido.add(Box.createVerticalStrut(14));
-            numero++;
-        }
-
-        if (!preguntas.isEmpty()) {
-            JButton botonFinalizar = FabricaUI.crearBotonPrimario("Finalizar Test");
-            botonFinalizar.setAlignmentX(LEFT_ALIGNMENT);
-            botonFinalizar.addActionListener(e -> manejarFinalizar());
-            contenido.add(botonFinalizar);
-            contenido.add(Box.createVerticalStrut(20));
-        }
+        contenido.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(contenido);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;
+    }
+
+    private JPanel construirFilaBotonesNavegacion() {
+        JPanel fila = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 0));
+        fila.setOpaque(false);
+        fila.setAlignmentX(LEFT_ALIGNMENT);
+
+        int total = preguntas.size();
+        boolean esUltima = preguntaIndexActual == total - 1;
+        boolean esPrimera = preguntaIndexActual == 0;
+
+        JButton botonAnterior = FabricaUI.crearBotonSecundario("← Anterior");
+        botonAnterior.setEnabled(!esPrimera);
+        botonAnterior.addActionListener(e -> {
+            preguntaIndexActual = Math.max(0, preguntaIndexActual - 1);
+            reconstruirPreguntas();
+        });
+        fila.add(botonAnterior);
+
+        JButton botonSiguiente = FabricaUI.crearBotonPrimario(esUltima ? "Finalizar Test" : "Siguiente →");
+        botonSiguiente.addActionListener(e -> {
+            if (esUltima) {
+                manejarFinalizar();
+            } else {
+                preguntaIndexActual = Math.min(total - 1, preguntaIndexActual + 1);
+                reconstruirPreguntas();
+            }
+        });
+        fila.add(botonSiguiente);
+
+        return fila;
+    }
+
+    private void reconstruirPreguntas() {
+        textoPreguntaLbl.setText("Pregunta " + (preguntaIndexActual + 1) + " de " + preguntas.size());
+        barraProgreso.setProgreso(preguntaIndexActual + 1, preguntas.size());
+        panelPreguntas.removeAll();
+        panelPreguntas.add(construirPreguntas(), BorderLayout.CENTER);
+        panelPreguntas.revalidate();
+        panelPreguntas.repaint();
     }
 
     private JPanel construirTarjetaPregunta(int numero, PreguntaTest pregunta) {
@@ -150,8 +198,7 @@ public class VentanaTest extends VentanaBase {
         tarjeta.add(enunciadoLbl);
         tarjeta.add(Box.createVerticalStrut(10));
 
-        ButtonGroup grupo = new ButtonGroup();
-        gruposPorPregunta.put(pregunta.getId(), grupo);
+        Integer opcionGuardada = respuestasSeleccionadas.get(pregunta.getId());
 
         for (OpcionTest opcion : pregunta.getOpciones()) {
             JRadioButton radio = new JRadioButton(opcion.getTexto());
@@ -161,7 +208,10 @@ public class VentanaTest extends VentanaBase {
             radio.setOpaque(false);
             radio.setAlignmentX(LEFT_ALIGNMENT);
             radio.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            grupo.add(radio);
+            if (opcionGuardada != null && opcionGuardada == opcion.getId()) {
+                radio.setSelected(true);
+            }
+            radio.addActionListener(e -> respuestasSeleccionadas.put(pregunta.getId(), opcion.getId()));
             tarjeta.add(radio);
         }
 
@@ -169,20 +219,13 @@ public class VentanaTest extends VentanaBase {
     }
 
     private void manejarFinalizar() {
-        Map<Integer, Integer> respuestas = new HashMap<>();
-        for (PreguntaTest pregunta : preguntas) {
-            ButtonGroup grupo = gruposPorPregunta.get(pregunta.getId());
-            Integer opcionElegida = obtenerSeleccionada(grupo);
-            if (opcionElegida != null) respuestas.put(pregunta.getId(), opcionElegida);
-        }
-
-        if (respuestas.size() < preguntas.size()) {
+        if (respuestasSeleccionadas.size() < preguntas.size()) {
             DialogoPersonalizado.mostrarError(this, "Respondé todas las preguntas antes de finalizar.");
             return;
         }
 
         try {
-            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getTitulo(), preguntas, respuestas);
+            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getTitulo(), preguntas, respuestasSeleccionadas);
             boolean aprobado = puntaje >= ControladorTest.puntajeAprobacion();
             String mensaje = "Obtuviste " + puntaje + " / 100.\n"
                 + (aprobado ? "¡Aprobaste el curso!" : "No alcanzaste el puntaje mínimo (" + ControladorTest.puntajeAprobacion() + ").");
@@ -197,14 +240,5 @@ public class VentanaTest extends VentanaBase {
         } catch (SQLException ex) {
             DialogoPersonalizado.mostrarError(this, "No se pudo guardar el resultado:\n" + ex.getMessage());
         }
-    }
-
-    private Integer obtenerSeleccionada(ButtonGroup grupo) {
-        Enumeration<AbstractButton> elementos = grupo.getElements();
-        while (elementos.hasMoreElements()) {
-            AbstractButton boton = elementos.nextElement();
-            if (boton.isSelected()) return Integer.parseInt(boton.getActionCommand());
-        }
-        return null;
     }
 }
