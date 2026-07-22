@@ -1,6 +1,7 @@
 package vista;
 
 import controlador.ControladorPanelUsuario;
+import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.EstadisticasUsuario;
 import modelo.Inscripcion;
@@ -22,6 +23,7 @@ import java.util.List;
 public class VentanaPanelUsuario extends VentanaBase {
 
     private final ControladorPanelUsuario controlador = new ControladorPanelUsuario();
+    private final ControladorTest controladorTest = new ControladorTest();
     private final String emailUsuario;
     private JTabbedPane tabPane;
 
@@ -81,10 +83,18 @@ public class VentanaPanelUsuario extends VentanaBase {
         panelBotones.setOpaque(false);
 
         JButton botonCatalogo = FabricaUI.crearBotonSecundarioPequeno("Ver Catálogo");
-        botonCatalogo.addActionListener(e -> { dispose(); new VentanaCursos(emailUsuario).setVisible(true); });
+        botonCatalogo.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
+            dispose();
+            new VentanaCursos(emailUsuario).setVisible(true);
+        });
 
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión");
-        botonCerrarSesion.addActionListener(e -> { dispose(); new VentanaLogin().setVisible(true); });
+        botonCerrarSesion.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
+            dispose();
+            new VentanaLogin().setVisible(true);
+        });
 
         panelBotones.add(botonCatalogo);
         panelBotones.add(botonCerrarSesion);
@@ -217,7 +227,11 @@ public class VentanaPanelUsuario extends VentanaBase {
                 contenido.add(Box.createVerticalStrut(14));
                 JButton botonIr = FabricaUI.crearBotonPrimario("Explorar Catálogo");
                 botonIr.setAlignmentX(LEFT_ALIGNMENT);
-                botonIr.addActionListener(e -> { dispose(); new VentanaCursos(emailUsuario).setVisible(true); });
+                botonIr.addActionListener(e -> {
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    new VentanaCursos(emailUsuario).setVisible(true);
+                });
                 contenido.add(botonIr);
             } else {
                 agregarTituloSeccion(contenido, "Tus cursos inscriptos  (" + inscripciones.size() + ")");
@@ -285,6 +299,20 @@ public class VentanaPanelUsuario extends VentanaBase {
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
 
+        int mejorPuntaje = -1;
+        try {
+            mejorPuntaje = controladorTest.obtenerMejorPuntaje(emailUsuario, cursoTitulo);
+        } catch (Exception ignored) {}
+        boolean aprobado = mejorPuntaje >= ControladorTest.puntajeAprobacion();
+
+        if (aprobado && curso != null) {
+            int puntajeAprobado = mejorPuntaje;
+            JButton botonCertificado = FabricaUI.crearBotonSecundarioPequeno("Ver Certificado");
+            botonCertificado.addActionListener(e ->
+                new VentanaCertificado(curso, resolverNombreUsuario(), puntajeAprobado).setVisible(true));
+            botones.add(botonCertificado);
+        }
+
         JButton botonIngresar = FabricaUI.crearBotonPrimarioPequeno("Ingresar");
         botonIngresar.addActionListener(e -> abrirCurso(curso));
 
@@ -314,6 +342,7 @@ public class VentanaPanelUsuario extends VentanaBase {
             mostrarError("Contenido no disponible.");
             return;
         }
+        if (!iniciarTransicionUnica()) return;
         String nombreUsuario = resolverNombreUsuario();
         dispose();
         new VentanaContenidoCurso(curso, emailUsuario, nombreUsuario,

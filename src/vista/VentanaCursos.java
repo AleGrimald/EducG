@@ -55,12 +55,14 @@ public class VentanaCursos extends VentanaBase {
 
         JButton botonPanel = FabricaUI.crearBotonSecundarioPequeno("Mi Panel");
         botonPanel.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
             dispose();
             new VentanaPanelUsuario(emailUsuario).setVisible(true);
         });
 
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión");
         botonCerrarSesion.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
             dispose();
             new VentanaLogin().setVisible(true);
         });
@@ -139,6 +141,7 @@ public class VentanaCursos extends VentanaBase {
     }
 
     private void abrirContenidoCurso(Curso curso, String nombreUsuario) {
+        if (!iniciarTransicionUnica()) return;
         dispose();
         new VentanaContenidoCurso(curso, emailUsuario, nombreUsuario,
             () -> new VentanaCursos(emailUsuario).setVisible(true)).setVisible(true);

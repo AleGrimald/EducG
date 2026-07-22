@@ -15,6 +15,9 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+CREATE DATABASE IF NOT EXISTS `educg_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `educg_db`;
+
 --
 -- Table structure for table `curso_contenidos`
 --
@@ -68,7 +71,7 @@ CREATE TABLE `cursos` (
 
 LOCK TABLES `cursos` WRITE;
 /*!40000 ALTER TABLE `cursos` DISABLE KEYS */;
-INSERT INTO `cursos` VALUES (1,'☕','Java desde Cero','Aprendé programación orientada a objetos con el lenguaje más usado en la industria.','8 semanas'),(2,'?','Python para Principiantes','El lenguaje más amigable para comenzar. Ideal para automatización, datos y web.','6 semanas'),(3,'?','Desarrollo Web Full Stack','Construí sitios modernos con HTML, CSS, JavaScript y una intro a frameworks.','10 semanas'),(4,'?️','SQL y Bases de Datos','Diseñá y consultá bases de datos relacionales. Fundamento de toda aplicación.','5 semanas'),(5,'?','Git y GitHub','Control de versiones profesional. Trabajá en equipo sin perder ningún cambio.','3 semanas'),(6,'?','Algoritmos y Estructuras de Datos','El corazón de la programación eficiente. Preparate para entrevistas técnicas.','7 semanas');
+INSERT INTO `cursos` VALUES (1,'☕','Java desde Cero','Aprendé programación orientada a objetos con el lenguaje más usado en la industria.','8 semanas'),(2,'🐍','Python para Principiantes','El lenguaje más amigable para comenzar. Ideal para automatización, datos y web.','6 semanas'),(3,'🌐','Desarrollo Web Full Stack','Construí sitios modernos con HTML, CSS, JavaScript y una intro a frameworks.','10 semanas'),(4,'🗄️','SQL y Bases de Datos','Diseñá y consultá bases de datos relacionales. Fundamento de toda aplicación.','5 semanas'),(5,'🔧','Git y GitHub','Control de versiones profesional. Trabajá en equipo sin perder ningún cambio.','3 semanas'),(6,'📊','Algoritmos y Estructuras de Datos','El corazón de la programación eficiente. Preparate para entrevistas técnicas.','7 semanas');
 /*!40000 ALTER TABLE `cursos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -85,6 +88,7 @@ CREATE TABLE `inscripciones` (
   `curso_id` int NOT NULL,
   `fecha_inscripcion` datetime DEFAULT CURRENT_TIMESTAMP,
   `activo` tinyint(1) DEFAULT '1',
+  `leccion_actual` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_inscripcion` (`usuario_id`,`curso_id`),
   KEY `curso_id` (`curso_id`),
@@ -99,7 +103,7 @@ CREATE TABLE `inscripciones` (
 
 LOCK TABLES `inscripciones` WRITE;
 /*!40000 ALTER TABLE `inscripciones` DISABLE KEYS */;
-INSERT INTO `inscripciones` VALUES (1,1,2,'2026-07-18 00:52:57',1),(2,2,1,'2026-07-18 01:33:56',0),(3,2,2,'2026-07-18 02:03:16',0),(4,2,5,'2026-07-18 02:02:06',0),(5,2,3,'2026-07-18 02:03:19',0),(6,2,4,'2026-07-18 02:03:21',0),(7,2,6,'2026-07-18 02:03:22',0),(8,4,2,'2026-07-18 02:16:35',1),(9,1,4,'2026-07-18 03:00:30',1),(10,5,1,'2026-07-18 03:24:34',1),(11,5,2,'2026-07-18 03:28:15',1);
+INSERT INTO `inscripciones` VALUES (1,1,2,'2026-07-18 00:52:57',1,0),(2,2,1,'2026-07-18 01:33:56',0,0),(3,2,2,'2026-07-18 02:03:16',0,0),(4,2,5,'2026-07-18 02:02:06',0,0),(5,2,3,'2026-07-18 02:03:19',0,0),(6,2,4,'2026-07-18 02:03:21',0,0),(7,2,6,'2026-07-18 02:03:22',0,0),(8,4,2,'2026-07-18 02:16:35',1,0),(9,1,4,'2026-07-18 03:00:30',1,0),(10,5,1,'2026-07-18 03:24:34',1,0),(11,5,2,'2026-07-18 03:28:15',1,0);
 /*!40000 ALTER TABLE `inscripciones` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -583,6 +587,33 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `sp_modificar_progreso_inscripcion` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_modificar_progreso_inscripcion`(
+    IN p_email          VARCHAR(255),
+    IN p_curso_titulo   VARCHAR(200),
+    IN p_leccion_actual TINYINT
+)
+BEGIN
+    UPDATE inscripciones i
+    INNER JOIN usuarios u ON u.id = i.usuario_id
+    INNER JOIN cursos   c ON c.id = i.curso_id
+    SET    i.leccion_actual = p_leccion_actual
+    WHERE  u.email = p_email AND c.titulo = p_curso_titulo AND u.activo = 1;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP PROCEDURE IF EXISTS `sp_modificar_usuario` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -686,6 +717,33 @@ BEGIN
     SELECT COALESCE(MAX(puntaje), -1) INTO p_mejor_puntaje
     FROM test_resultados
     WHERE usuario_id = v_usuario_id AND curso_id = v_curso_id;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `sp_obtener_progreso_inscripcion` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_obtener_progreso_inscripcion`(
+    IN  p_email          VARCHAR(255),
+    IN  p_curso_titulo   VARCHAR(200),
+    OUT p_leccion_actual TINYINT
+)
+BEGIN
+    SELECT i.leccion_actual INTO p_leccion_actual
+    FROM   inscripciones i
+    INNER JOIN usuarios u ON u.id = i.usuario_id
+    INNER JOIN cursos   c ON c.id = i.curso_id
+    WHERE  u.email = p_email AND c.titulo = p_curso_titulo AND i.activo = 1;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;

@@ -33,6 +33,7 @@ public class VentanaTest extends VentanaBase {
     private final Map<Integer, Integer> respuestasSeleccionadas = new HashMap<>();
     private BarraProgreso barraProgreso;
     private JLabel textoPreguntaLbl;
+    private JButton botonVolverEncabezado;
     private JPanel panelPreguntas;
 
     public VentanaTest(Curso curso, String emailUsuario, Runnable alVolver) {
@@ -89,14 +90,15 @@ public class VentanaTest extends VentanaBase {
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(textoPreguntaLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("← Cancelar");
-        botonVolver.addActionListener(e -> {
+        botonVolverEncabezado = FabricaUI.crearBotonSecundarioPequeno("← Cancelar");
+        botonVolverEncabezado.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
             dispose();
             alVolver.run();
         });
 
         fila1.add(bloqueTitulo, BorderLayout.WEST);
-        fila1.add(botonVolver, BorderLayout.EAST);
+        fila1.add(botonVolverEncabezado, BorderLayout.EAST);
 
         encabezado.add(fila1);
         encabezado.add(Box.createVerticalStrut(12));
@@ -232,18 +234,150 @@ public class VentanaTest extends VentanaBase {
         try {
             int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getTitulo(), preguntas, respuestasSeleccionadas);
             boolean aprobado = puntaje >= ControladorTest.puntajeAprobacion();
-            String mensaje = "Obtuviste " + puntaje + " / 100.\n"
-                + (aprobado ? "¡Aprobaste el curso!" : "No alcanzaste el puntaje mínimo (" + ControladorTest.puntajeAprobacion() + ").");
-
-            DialogoPersonalizado dialogo = new DialogoPersonalizado(this,
-                aprobado ? DialogoPersonalizado.TipoDialogo.EXITO : DialogoPersonalizado.TipoDialogo.INFO,
-                aprobado ? "¡Aprobaste!" : "Resultado del test", mensaje);
-            dialogo.establecerListenerCierre(() -> {
-                dispose();
-                alVolver.run();
-            });
+            mostrarResultados(puntaje, aprobado);
         } catch (SQLException ex) {
             DialogoPersonalizado.mostrarError(this, "No se pudo guardar el resultado:\n" + ex.getMessage());
         }
+    }
+
+    /** Reemplaza el cuerpo de la ventana por el resumen del puntaje y la revisión pregunta por pregunta. */
+    private void mostrarResultados(int puntaje, boolean aprobado) {
+        textoPreguntaLbl.setText(aprobado
+            ? "¡Aprobaste con " + puntaje + " / 100!"
+            : "No aprobaste  ·  " + puntaje + " / 100");
+        barraProgreso.setProgreso(preguntas.size(), preguntas.size());
+        botonVolverEncabezado.setText("← Volver");
+
+        panelPreguntas.removeAll();
+        panelPreguntas.add(construirResultados(puntaje, aprobado), BorderLayout.CENTER);
+        panelPreguntas.revalidate();
+        panelPreguntas.repaint();
+    }
+
+    private Component construirResultados(int puntaje, boolean aprobado) {
+        JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        contenedorCentral.setBackground(new Color(245, 248, 252));
+
+        JPanel contenido = new JPanel();
+        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+        contenido.setBorder(new EmptyBorder(20, 32, 20, 32));
+
+        contenido.add(construirBannerResultado(puntaje, aprobado));
+        contenido.add(Box.createVerticalStrut(20));
+
+        for (int i = 0; i < preguntas.size(); i++) {
+            contenido.add(construirTarjetaRevision(i + 1, preguntas.get(i)));
+            contenido.add(Box.createVerticalStrut(12));
+        }
+
+        JButton botonVolver = FabricaUI.crearBotonPrimario("Volver al curso");
+        botonVolver.setAlignmentX(LEFT_ALIGNMENT);
+        botonVolver.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
+            dispose();
+            alVolver.run();
+        });
+        contenido.add(botonVolver);
+        contenido.add(Box.createVerticalGlue());
+
+        contenedorCentral.add(contenido);
+
+        JScrollPane scroll = new JScrollPane(contenedorCentral);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
+    }
+
+    private JPanel construirBannerResultado(int puntaje, boolean aprobado) {
+        JPanel banner = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0, 0, 0, 15));
+                g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
+                g2.setColor(Color.WHITE);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
+                g2.dispose();
+            }
+        };
+        banner.setOpaque(false);
+        banner.setBorder(new EmptyBorder(18, 20, 18, 20));
+        banner.setAlignmentX(LEFT_ALIGNMENT);
+        banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+
+        JPanel bloque = new JPanel();
+        bloque.setOpaque(false);
+        bloque.setLayout(new BoxLayout(bloque, BoxLayout.Y_AXIS));
+
+        JLabel tituloLbl = new JLabel(aprobado ? "✓ ¡Aprobaste el curso!" : "No alcanzaste el puntaje mínimo");
+        tituloLbl.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        tituloLbl.setForeground(aprobado ? EstiloUI.EXITO : EstiloUI.ERROR);
+
+        JLabel detalleLbl = new JLabel("Obtuviste " + puntaje + " / 100  ·  aprueba con "
+            + ControladorTest.puntajeAprobacion() + " / 100. Revisá tus respuestas debajo.");
+        detalleLbl.setFont(EstiloUI.FUENTE_CUERPO);
+        detalleLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+
+        bloque.add(tituloLbl);
+        bloque.add(Box.createVerticalStrut(4));
+        bloque.add(detalleLbl);
+
+        banner.add(bloque, BorderLayout.CENTER);
+        return banner;
+    }
+
+    /** Tarjeta de revisión: enunciado, la respuesta elegida y, si estuvo mal, cuál era la correcta. */
+    private JPanel construirTarjetaRevision(int numero, PreguntaTest pregunta) {
+        Integer opcionElegidaId = respuestasSeleccionadas.get(pregunta.getId());
+        OpcionTest opcionElegida = null;
+        OpcionTest opcionCorrecta = null;
+        for (OpcionTest opcion : pregunta.getOpciones()) {
+            if (opcionElegidaId != null && opcion.getId() == opcionElegidaId) opcionElegida = opcion;
+            if (opcion.isCorrecta()) opcionCorrecta = opcion;
+        }
+        boolean esCorrecta = opcionElegida != null && opcionElegida.isCorrecta();
+
+        JPanel tarjeta = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0, 0, 0, 15));
+                g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
+                g2.setColor(Color.WHITE);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
+                g2.dispose();
+            }
+        };
+        tarjeta.setOpaque(false);
+        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
+        tarjeta.setBorder(new EmptyBorder(16, 20, 16, 20));
+        tarjeta.setAlignmentX(LEFT_ALIGNMENT);
+        tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+
+        JLabel enunciadoLbl = new JLabel("<html><body style='width: 650px'>" + numero + ". " + pregunta.getEnunciado() + "</body></html>");
+        enunciadoLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        enunciadoLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        enunciadoLbl.setAlignmentX(LEFT_ALIGNMENT);
+        tarjeta.add(enunciadoLbl);
+        tarjeta.add(Box.createVerticalStrut(8));
+
+        JLabel tuRespuestaLbl = new JLabel((esCorrecta ? "✓  " : "✕  ") + "Tu respuesta: "
+            + (opcionElegida != null ? opcionElegida.getTexto() : "(sin responder)"));
+        tuRespuestaLbl.setFont(EstiloUI.FUENTE_CUERPO);
+        tuRespuestaLbl.setForeground(esCorrecta ? EstiloUI.EXITO : EstiloUI.ERROR);
+        tuRespuestaLbl.setAlignmentX(LEFT_ALIGNMENT);
+        tarjeta.add(tuRespuestaLbl);
+
+        if (!esCorrecta) {
+            tarjeta.add(Box.createVerticalStrut(4));
+            JLabel correctaLbl = new JLabel("Respuesta correcta: " + (opcionCorrecta != null ? opcionCorrecta.getTexto() : "—"));
+            correctaLbl.setFont(EstiloUI.FUENTE_CUERPO);
+            correctaLbl.setForeground(EstiloUI.EXITO);
+            correctaLbl.setAlignmentX(LEFT_ALIGNMENT);
+            tarjeta.add(correctaLbl);
+        }
+
+        return tarjeta;
     }
 }

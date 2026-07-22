@@ -78,6 +78,7 @@ public class VentanaContenidoCurso extends VentanaBase {
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("← Volver");
         botonVolver.addActionListener(e -> {
+            if (!iniciarTransicionUnica()) return;
             dispose();
             alVolver.run();
         });
@@ -246,6 +247,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     }
 
     private void abrirTest() {
+        if (!iniciarTransicionUnica()) return;
         dispose();
         new VentanaTest(curso, emailUsuario, () ->
             new VentanaContenidoCurso(curso, emailUsuario, nombreUsuario, alVolver).setVisible(true)

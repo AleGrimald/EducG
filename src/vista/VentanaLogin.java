@@ -188,6 +188,7 @@ public class VentanaLogin extends VentanaBase {
 
         try {
             if (controlador.iniciarSesion(email, password)) {
+                if (!iniciarTransicionUnica()) return;
                 dispose();
                 new VentanaCursos(email).setVisible(true);
             } else {
@@ -201,6 +202,7 @@ public class VentanaLogin extends VentanaBase {
     }
 
     private void abrirRegistro() {
+        if (!iniciarTransicionUnica()) return;
         setVisible(false);
         new VentanaRegistro(this).setVisible(true);
     }
