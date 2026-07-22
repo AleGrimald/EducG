@@ -33,6 +33,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         this.alVolver = alVolver;
         cargarProgreso();
         construirUI();
+        activarBurbujaChatbot(emailUsuario, curso.getTitulo());
     }
 
     private void cargarProgreso() {

@@ -32,6 +32,8 @@ public final class EstiloUI {
     public static final Color FONDO_GRIS_CLARO  = new Color(240, 242, 245);  // Gris muy claro
     public static final Color FONDO_CAMPO       = new Color(248, 250, 252);  // Gris campo
     public static final Color BORDE             = new Color(220, 225, 230); // Gris borde
+    /** Fondo suave para superficies grandes que no deben deslumbrar (p.ej. la ventana de chat) — más tenue que blanco puro. */
+    public static final Color FONDO_SUAVE        = new Color(228, 233, 238);
 
     // Colores para componentes
     public static final Color BOTON_PRESIONADO = new Color(25, 90, 150);
@@ -86,6 +88,14 @@ public final class EstiloUI {
     public static final int ALTO_DIALOGO = 300;
     public static final int ANCHO_TARJETA_FORM = 420;
     public static final int ALTO_TARJETA_FORM = 600;
+
+    // Burbuja de chatbot flotante
+    public static final int TAMANO_BURBUJA_CHATBOT = 64;
+    public static final int MARGEN_BURBUJA_CHATBOT = 36;
+    /** Margen inferior de la burbuja — más grande que el lateral para despegarla bien del borde/taskbar. */
+    public static final int MARGEN_BURBUJA_CHATBOT_INFERIOR = 70;
+    public static final int ANCHO_VENTANA_CHAT = 360;
+    public static final int ALTO_VENTANA_CHAT = 480;
 
     // ── MÉTODOS AUXILIARES ─────────────────────────────────────────────────────
 

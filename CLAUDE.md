@@ -40,6 +40,14 @@ El código sigue el patrón **Modelo-Vista-Controlador**, con nombres de paquete
 
 7. **`util`** — `Validador`: validación de inputs (regex email/password/nombre) + chequeo de riesgo de inyección
 
+8. **`chatbot`** — Motor de IA intercambiable para la burbuja de chat flotante ("Robotito")
+   - `MotorChatbot` (interfaz) — `enviarMensaje(historial, contextoSistema)`; `MotorClaude` y `MotorGemini` (implementaciones reales, HTTP directo a sus APIs vía `java.net.http.HttpClient` + `org.json`); `MotorGPT`/`MotorKimi` (stubs, listos para completar)
+   - `MensajeChat` (POJO rol/contenido), `MotorChatbotException` (falla del motor, mensaje ya en español)
+   - `ConfiguracionChatbot` (lee `CHATBOT_PROVEEDOR`/`CHATBOT_API_KEY`/`CHATBOT_MODELO` de `.env`), `FabricaMotorChatbot` (único punto de switch entre proveedores)
+   - `servicio.ServicioChatbot` arma el contexto (cursos inscriptos, progreso, aprobación) desde `ServicioInscripcion`/`ServicioCursos`/`ServicioTest` y llama al motor configurado; `controlador.ControladorChatbot` valida el texto libre (longitud + caracteres de control, no la regex agresiva de `Validador.tieneRiesgoInyeccion()`)
+   - Vista: `vista.componentes.BurbujaRobotito` (botón circular flotante) + `VentanaChatFlotante` (ventana de chat anclada cerca de la burbuja); enganchadas vía `VentanaBase.activarBurbujaChatbot(...)`, opt-in, llamado solo desde `VentanaCursos`/`VentanaContenidoCurso`/`VentanaPanelUsuario`
+   - Ver "Chatbot flotante" más abajo para el detalle completo
+
 ### Data Flow
 
 ```
@@ -147,7 +155,7 @@ no necesita hacer un round-trip previo para obtener el id.
 
 # Command line (el código ahora vive en paquetes, hay que listar todos los .java):
 find src -name "*.java" > sources.txt
-javac -cp "lib/mysql-connector-j-8.3.0.jar" -d out/production/EducG @sources.txt
+javac -cp "lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar" -d out/production/EducG @sources.txt
 ```
 
 ### Run
@@ -156,8 +164,12 @@ javac -cp "lib/mysql-connector-j-8.3.0.jar" -d out/production/EducG @sources.txt
 # IntelliJ: Right-click Main.java > Run (or Shift+F10)
 
 # Command line:
-java -cp "out/production/EducG;lib/mysql-connector-j-8.3.0.jar" Main
+java -cp "out/production/EducG;lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar" Main
 ```
+
+`lib/json-20240303.jar` (org.json) se agregó para el chatbot — arma/parsea el JSON de las
+llamadas HTTP a la API de Claude. Sin dependencias transitivas, igual que
+`mysql-connector-j-8.3.0.jar`; agregalo también en IntelliJ (Project Structure > Libraries).
 
 ### Configure Database Connection
 
@@ -168,9 +180,17 @@ DB_PORT=3306
 DB_DATABASE=educg_db
 DB_USER=root
 DB_PASSWORD=<your_password>
+
+# Chatbot flotante ("Robotito") — opcional, ver sección "Chatbot flotante"
+# Proveedores con implementación real hoy: claude | gemini (gpt/kimi son stubs)
+CHATBOT_PROVEEDOR=gemini
+CHATBOT_API_KEY=<tu_api_key_de_gemini_o_claude>
+CHATBOT_MODELO=gemini-flash-latest
 ```
 
-`ConexionBD` (paquete `bd`) busca `.env` en: working directory → project root → system environment variables.
+`ConexionBD` (paquete `bd`) y `chatbot.ConfiguracionChatbot` comparten el mismo loader
+(`bd.CargadorEnv`), que busca `.env` en: working directory → project root → system
+environment variables.
 
 ### Testing
 
@@ -217,6 +237,45 @@ El catálogo ya NO está hardcodeado en Java: `servicio.ServicioCursos` (vía `d
 
 Cada curso tiene un banco de 20 preguntas multiple-choice (`test_preguntas`/`test_opciones`); `sp_listar_preguntas_curso` elige 10 al azar en cada llamada, así el test no es siempre igual. `VentanaTest` las muestra con `JRadioButton` agrupados por pregunta; al finalizar, `ControladorTest`/`ServicioTest` corrigen contra `es_correcta`, guardan el intento en `test_resultados` (vía `sp_alta_resultado_test`, que ahora devuelve el id creado) y cada respuesta elegida en `test_respuestas_usuario`. Puntaje ≥ `ServicioTest.PUNTAJE_APROBACION` (60/100) ⇒ el curso queda "Aprobado" en `VentanaContenidoCurso`, habilitando el botón "Ver Certificado" (`VentanaCertificado`, una vista generada a partir de nombre/curso/fecha/puntaje — no se persiste como entidad separada).
 
+### Chatbot flotante ("Robotito")
+
+Botón circular flotante (`vista.componentes.BurbujaRobotito`) visible sobre `VentanaCursos`,
+`VentanaContenidoCurso` y `VentanaPanelUsuario` (nunca en Login/Registro/Test/Certificado),
+enganchado vía `VentanaBase.activarBurbujaChatbot(email[, cursoTitulo])` — opt-in, una línea
+al final del constructor de cada ventana que lo quiera. Al hacer clic abre
+`vista.componentes.VentanaChatFlotante`, anclada abajo a la derecha (no centrada), donde el
+usuario puede preguntar sobre sus cursos.
+
+`servicio.ServicioChatbot` arma el contexto en cada mensaje leyendo `ServicioInscripcion`
+(cursos inscriptos + progreso), `ServicioCursos` (título/lecciones) y `ServicioTest`
+(mejor puntaje/aprobación) — el bot solo conoce lo que estos servicios ya exponen, no accede
+a la base directamente. `controlador.ControladorChatbot` valida el texto libre (no vacío,
+máx. 2000 caracteres, sin caracteres de control) — deliberadamente **no** usa
+`Validador.tieneRiesgoInyeccion()`, que bloquearía puntuación normal de una pregunta en
+español.
+
+**Motor intercambiable:** `chatbot.FabricaMotorChatbot.obtenerMotor()` es el único punto de
+switch entre proveedores, según `CHATBOT_PROVEEDOR` en `.env` (`claude` | `gemini` | `gpt` |
+`kimi`). `chatbot.MotorClaude` (Claude Messages API) y `chatbot.MotorGemini` (Google
+Generative Language API, modelo por defecto `gemini-flash-latest` — alias que Google mantiene
+apuntando al Flash vigente; los nombres de modelo fijos como `gemini-2.5-flash` van quedando
+sin disponibilidad para cuentas nuevas con el tiempo, mejor usar el alias) llaman a una API
+real, ambos vía `java.net.http.HttpClient` + `org.json`;
+`MotorGPT`/`MotorKimi` siguen siendo stubs que implementan la misma interfaz `MotorChatbot`
+y devuelven "todavía no implementado". Agregar un proveedor nuevo = completar el cuerpo de
+su `Motor*` existente, sin tocar `ServicioChatbot`, `ControladorChatbot` ni la vista. Cambiar
+de proveedor = cambiar `CHATBOT_PROVEEDOR` (+ su API key) en `.env` y reiniciar la app — es
+una lectura estática, igual que las credenciales de DB en `ConexionBD`.
+
+Nota sobre `MensajeChat`: internamente los roles son `"user"`/`"assistant"` (convención de
+Claude); `MotorGemini` los traduce a `"user"`/`"model"` (convención de Gemini) al armar el
+request — el resto del código (`ServicioChatbot`, `ControladorChatbot`) es agnóstico al
+proveedor y no necesita saber de esta diferencia.
+
+`VentanaChatFlotante` usa `SwingWorker` para la llamada al motor (única excepción a "sin
+hilos en segundo plano" del resto de la app — necesaria porque acá hay una llamada HTTP
+real a un servicio externo, y bloquear el EDT congelaría la ventana).
+
 ### Navigation Flow
 
 ```
@@ -253,13 +312,20 @@ Each window is a `JFrame` (via `VentanaBase`). Navigation uses `setVisible(true/
 2. Adjust component sizing/styling: edit `FabricaUI.crearTarjeta()`, `crearBotonPrimario()`, etc., or `BotonRedondeado`
 3. No custom themes or LAF configuration; uses Nimbus set in `Main.java`
 
+### Add a new AI provider to the chatbot
+
+1. Fill in the corresponding stub in `chatbot` (`MotorGPT` or `MotorKimi`) — same shape as `MotorClaude`/`MotorGemini`: build the request, call the provider's HTTP API, parse the JSON reply, throw `MotorChatbotException` (message in Spanish) on failure
+2. Add the provider's default model id to `ConfiguracionChatbot.modeloPorDefecto(...)` if it isn't already there
+3. Nothing else changes — `FabricaMotorChatbot` already routes to it once `CHATBOT_PROVEEDOR` in `.env` matches the provider name; `ServicioChatbot`/`ControladorChatbot`/the vista layer are provider-agnostic
+
 ## Security Notes
 
 - Passwords: SHA-256 + random 16-byte salt, stored as `saltHex:hashHex` (`servicio.HasheadorPassword`)
 - SQL injection: All DB access goes through stored procedures called via `CallableStatement` with bound parameters (no string-concatenated SQL anywhere in the DAO layer)
 - Input validation: Client-side (`util.Validador` regex, called from `controlador`) + server-side (parameterized stored procedure calls)
 - Password regex `^[a-zA-Z0-9]{6,20}$` restricts to alphanumeric; if symbols needed, expand regex and consider adding explicit SQL injection checks
-- `.env` is in `.gitignore` — never commit database credentials
+- `.env` is in `.gitignore` — never commit database credentials, and this now also includes `CHATBOT_API_KEY`
+- Chatbot free-text input is validated in `controlador.ControladorChatbot` with a length cap + control-character check — intentionally lighter than `Validador.tieneRiesgoInyeccion()`, which would reject normal punctuation in a chat question
 
 ## UI Style System
 
@@ -349,9 +415,9 @@ Dialogs automatically animate in/out and success/info dialogs auto-close after 2
 
 ## Notes for Onboarding
 
-- **New developer checklist:** Run `mysql -u root -p < schema.sql`, then `mysql -u root -p educg_db < stored_procedures_test.sql`, populate `.env`, ensure MySQL is on localhost:3306
+- **New developer checklist:** Run `mysql -u root -p < schema.sql`, then `mysql -u root -p educg_db < stored_procedures_test.sql`, populate `.env`, ensure MySQL is on localhost:3306. `CHATBOT_API_KEY` is optional — without it the chatbot bubble still opens but shows a friendly error when you try to send a message.
 - **Hardcoded strings:** All UI text is in Spanish; no localization mechanism exists
-- **No background threads:** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future
+- **No background threads (except the chatbot):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. The one deliberate exception is `VentanaChatFlotante`, which uses `SwingWorker` for the HTTP call to the AI provider — that's a real external network call, not local MySQL, so blocking the EDT would freeze the window.
 - **Test results:** `test_resultados` is now populated by `VentanaTest` (`sp_alta_resultado_test`); `test_respuestas_usuario` records each individual answer per attempt
 - **UI Consistency:** When adding new features, **always use `EstiloUI` constants** for colors, fonts, and dimensions. Breaking this rule will require refactoring.
 - **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a procedure to both `stored_procedures.sql` and `schema.sql` (or to `stored_procedures_test.sql` if it belongs to the course-content/test feature), following the `sp_<accion>_<entidad>` naming convention.
