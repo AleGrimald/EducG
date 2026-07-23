@@ -31,6 +31,7 @@ public class VentanaPanelUsuario extends VentanaBase {
         super("Educ G – Mi Panel", EXIT_ON_CLOSE);
         this.emailUsuario = emailUsuario;
         construirUI();
+        activarBurbujaChatbot(emailUsuario);
     }
 
     private void construirUI() {

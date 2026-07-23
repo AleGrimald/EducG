@@ -19,40 +19,18 @@ public class ConexionBD {
         PORT     = Integer.parseInt(env.getProperty("DB_PORT", "3306"));
         DATABASE = env.getProperty("DB_DATABASE", "educg_db");
         USER     = env.getProperty("DB_USER", "root");
-        PASSWORD = env.getProperty("DB_PASSWORD", "78531015aA@");
+        PASSWORD = env.getProperty("DB_PASSWORD", "star1989");
     }
 
     private static java.util.Properties loadEnv() {
-        // Busca .env en: working dir, directorio del .class, raíz del proyecto
-        String[] candidates = {
-            ".env",
-            System.getProperty("user.dir") + java.io.File.separator + ".env",
-            new java.io.File(ConexionBD.class.getProtectionDomain()
-                .getCodeSource().getLocation().getPath())
-                .getParentFile().getParent() + java.io.File.separator + ".env"
-        };
-        java.util.Properties props = new java.util.Properties();
-        for (String path : candidates) {
-            java.io.File f = new java.io.File(path);
-            if (f.exists()) {
-                try (java.io.InputStream in = new java.io.FileInputStream(f)) {
-                    props.load(in);
-                    return props;
-                } catch (java.io.IOException ignored) {}
-            }
-        }
-        // Fallback: variables de entorno del sistema operativo
-        for (String key : new String[]{"DB_HOST","DB_PORT","DB_DATABASE","DB_USER","DB_PASSWORD"}) {
-            String val = System.getenv(key);
-            if (val != null) props.setProperty(key, val);
-        }
-        return props;
+        return CargadorEnv.cargar("DB_HOST", "DB_PORT", "DB_DATABASE", "DB_USER", "DB_PASSWORD");
     }
 
     private static final String URL =
             "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
-            + "?useSSL=false&allowPublicKeyRetrieval=true"
-            + "&serverTimezone=UTC&characterEncoding=UTF-8";
+                    + "?useSSL=false&allowPublicKeyRetrieval=true"
+                    + "&serverTimezone=UTC&characterEncoding=UTF-8"
+                    + "&connectionCollation=utf8mb4_unicode_ci";
 
     private static Connection connection;
 

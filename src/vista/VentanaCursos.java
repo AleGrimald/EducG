@@ -23,6 +23,7 @@ public class VentanaCursos extends VentanaBase {
         super("Educ G – Cursos disponibles", EXIT_ON_CLOSE);
         this.emailUsuario = emailUsuario;
         construirUI();
+        activarBurbujaChatbot(emailUsuario);
     }
 
     private void construirUI() {
