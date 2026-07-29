@@ -12,8 +12,6 @@ import java.awt.geom.RoundRectangle2D;
 public class TarjetaCurso extends JPanel {
 
     private static final Color COLOR_TARJETA_BG = Color.WHITE;
-    private static final Color COLOR_TAG_BG      = new Color(235, 245, 255);
-    private static final Color COLOR_TAG_FG      = new Color(41, 128, 185);
     private static final Color COLOR_DIVISOR     = new Color(230, 236, 240);
     private static final Color COLOR_SOMBRA      = new Color(0, 0, 0, 18);
 
@@ -25,8 +23,8 @@ public class TarjetaCurso extends JPanel {
     public TarjetaCurso(Curso curso, boolean yaInscripto) {
         setOpaque(false);
         setLayout(new BorderLayout());
-        setMaximumSize(new Dimension(340, Integer.MAX_VALUE));
-        setPreferredSize(new Dimension(300, 400));
+        setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
+        setPreferredSize(new Dimension(260, 400));
 
         JPanel interior = new JPanel() {
             @Override
@@ -44,35 +42,28 @@ public class TarjetaCurso extends JPanel {
         interior.setLayout(new BoxLayout(interior, BoxLayout.Y_AXIS));
         interior.setBorder(new EmptyBorder(20, 22, 20, 22));
 
-        // ── Emoji + Título ──────────────────────────────────────────────────
-        JLabel emojiLbl = new JLabel(curso.getEmoji());
-        emojiLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 32));
-        emojiLbl.setAlignmentX(LEFT_ALIGNMENT);
+        // ── Emoji + Título (ícono a la izquierda, título a la derecha) ───────
+        JPanel encabezado = new JPanel(new BorderLayout(10, 0));
+        encabezado.setOpaque(false);
+        encabezado.setAlignmentX(LEFT_ALIGNMENT);
+        encabezado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
-        JLabel tituloLbl = new JLabel(curso.getTitulo());
+        JLabel emojiLbl = IconoCurso.crearEtiqueta(curso, 40);
+
+        JLabel tituloLbl = new JLabel("<html>" + curso.getTitulo() + "</html>");
         tituloLbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
         tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
-        tituloLbl.setAlignmentX(LEFT_ALIGNMENT);
+        tituloLbl.setVerticalAlignment(SwingConstants.CENTER);
 
-        // ── Duración (tag) ──────────────────────────────────────────────────
-        JLabel duracionTag = new JLabel("⏱ " + curso.getDuracion());
-        duracionTag.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        duracionTag.setForeground(COLOR_TAG_FG);
-        duracionTag.setOpaque(true);
-        duracionTag.setBackground(COLOR_TAG_BG);
-        duracionTag.setBorder(new EmptyBorder(3, 8, 3, 8));
-        duracionTag.setAlignmentX(LEFT_ALIGNMENT);
+        encabezado.add(emojiLbl, BorderLayout.WEST);
+        encabezado.add(tituloLbl, BorderLayout.CENTER);
 
         // ── Descripción ─────────────────────────────────────────────────────
-        JTextArea descArea = new JTextArea(curso.getDescripcion());
-        descArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        descArea.setForeground(EstiloUI.TEXTO_SECUNDARIO);
-        descArea.setLineWrap(true);
-        descArea.setWrapStyleWord(true);
-        descArea.setEditable(false);
-        descArea.setOpaque(false);
-        descArea.setAlignmentX(LEFT_ALIGNMENT);
-        descArea.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
+        JLabel descLbl = new JLabel("<html>" + curso.getDescripcion() + "</html>");
+        descLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        descLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        descLbl.setAlignmentX(LEFT_ALIGNMENT);
+        descLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
 
         // ── Divisor ─────────────────────────────────────────────────────────
         JSeparator sep = new JSeparator();
@@ -110,13 +101,9 @@ public class TarjetaCurso extends JPanel {
         if (yaInscripto) aplicarEstiloIniciarCurso();
 
         // ── Ensamblar ────────────────────────────────────────────────────────
-        interior.add(emojiLbl);
-        interior.add(Box.createVerticalStrut(6));
-        interior.add(tituloLbl);
-        interior.add(Box.createVerticalStrut(8));
-        interior.add(duracionTag);
+        interior.add(encabezado);
         interior.add(Box.createVerticalStrut(10));
-        interior.add(descArea);
+        interior.add(descLbl);
         interior.add(Box.createVerticalStrut(10));
         interior.add(sep);
         interior.add(Box.createVerticalStrut(8));

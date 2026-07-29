@@ -29,19 +29,29 @@ public class ControladorCursos {
     }
 
     /** @return true si la inscripción fue nueva; false si ya estaba inscripto */
-    public boolean inscribirCurso(String email, String cursoTitulo) throws SQLException {
-        return servicioInscripcion.inscribirCurso(email, cursoTitulo);
+    public boolean inscribirCurso(String email, int cursoId) throws SQLException {
+        return servicioInscripcion.inscribirCurso(email, cursoId);
     }
 
-    public boolean estaInscripto(String email, String cursoTitulo) throws SQLException {
-        return servicioInscripcion.estaInscripto(email, cursoTitulo);
+    public boolean estaInscripto(String email, int cursoId) throws SQLException {
+        return servicioInscripcion.estaInscripto(email, cursoId);
     }
 
-    public int obtenerProgreso(String email, String cursoTitulo) throws SQLException {
-        return servicioInscripcion.obtenerProgreso(email, cursoTitulo);
+    public int obtenerProgreso(String email, int cursoId) throws SQLException {
+        return servicioInscripcion.obtenerProgreso(email, cursoId);
     }
 
-    public void actualizarProgreso(String email, String cursoTitulo, int leccionActual) throws SQLException {
-        servicioInscripcion.actualizarProgreso(email, cursoTitulo, leccionActual);
+    public void actualizarProgreso(String email, int cursoId, int leccionActual) throws SQLException {
+        servicioInscripcion.actualizarProgreso(email, cursoId, leccionActual);
+    }
+
+    /** Compara la respuesta del alumno contra la esperada, ignorando mayúsculas/minúsculas y espacios extra. */
+    public boolean verificarRespuestaEjercicio(String respuestaAlumno, String respuestaEsperada) {
+        if (respuestaAlumno == null || respuestaEsperada == null) return false;
+        return normalizar(respuestaAlumno).equals(normalizar(respuestaEsperada));
+    }
+
+    private String normalizar(String texto) {
+        return texto.trim().toLowerCase().replaceAll("\\s+", " ");
     }
 }

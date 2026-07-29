@@ -22,8 +22,8 @@ public class ServicioTest {
         this.resultadoTestDAO = resultadoTestDAO;
     }
 
-    public List<PreguntaTest> obtenerPreguntas(String cursoTitulo) throws SQLException {
-        return preguntasDAO.listarPorCurso(cursoTitulo);
+    public List<PreguntaTest> obtenerPreguntas(int cursoId) throws SQLException {
+        return preguntasDAO.listarPorCurso(cursoId);
     }
 
     /**
@@ -31,7 +31,7 @@ public class ServicioTest {
      * @param respuestas mapa preguntaId -> opcionElegidaId
      * @return puntaje obtenido (0-100)
      */
-    public int corregirYGuardar(String email, String cursoTitulo, List<PreguntaTest> preguntas,
+    public int corregirYGuardar(String email, int cursoId, List<PreguntaTest> preguntas,
                                  Map<Integer, Integer> respuestas) throws SQLException {
         int correctas = 0;
         for (PreguntaTest pregunta : preguntas) {
@@ -40,7 +40,7 @@ public class ServicioTest {
         }
         int puntaje = preguntas.isEmpty() ? 0 : (int) Math.round(correctas * 100.0 / preguntas.size());
 
-        int resultadoId = resultadoTestDAO.registrarResultadoTest(email, cursoTitulo, "Evaluación final", puntaje);
+        int resultadoId = resultadoTestDAO.registrarResultadoTest(email, cursoId, puntaje);
         if (resultadoId != -1) {
             for (PreguntaTest pregunta : preguntas) {
                 Integer opcionElegidaId = respuestas.get(pregunta.getId());
@@ -57,12 +57,12 @@ public class ServicioTest {
             .anyMatch(o -> o.getId() == opcionElegidaId && o.isCorrecta());
     }
 
-    public boolean estaAprobado(String email, String cursoTitulo) throws SQLException {
-        return resultadoTestDAO.obtenerMejorPuntaje(email, cursoTitulo) >= PUNTAJE_APROBACION;
+    public boolean estaAprobado(String email, int cursoId) throws SQLException {
+        return resultadoTestDAO.obtenerMejorPuntaje(email, cursoId) >= PUNTAJE_APROBACION;
     }
 
     /** @return el mejor puntaje obtenido, o -1 si nunca rindió el test */
-    public int obtenerMejorPuntaje(String email, String cursoTitulo) throws SQLException {
-        return resultadoTestDAO.obtenerMejorPuntaje(email, cursoTitulo);
+    public int obtenerMejorPuntaje(String email, int cursoId) throws SQLException {
+        return resultadoTestDAO.obtenerMejorPuntaje(email, cursoId);
     }
 }

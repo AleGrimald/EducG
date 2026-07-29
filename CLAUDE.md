@@ -61,8 +61,9 @@ Controlador delega al Servicio de ese dominio
   ↓
 Servicio usa el DAO (interfaz) para consultar/actualizar la base
   ↓
-DAO llama a un stored procedure (sp_alta_*, sp_obtener_*, sp_modificar_*,
-  sp_baja_*, sp_listar_*) vía CallableStatement sobre ConexionBD
+DAO llama a un stored procedure (sp_alta_*/sp_crear_*, sp_obtener_*, sp_modificar_*,
+  sp_baja_*/sp_desactivar_*/sp_activar_*/sp_eliminar_*, sp_listar_*/sp_buscar_*)
+  vía CallableStatement sobre ConexionBD
   ↓
 Resultado (objeto de modelo/boolean) vuelve hasta la Vista; se muestra
   DialogoPersonalizado de éxito/error
@@ -70,81 +71,88 @@ Resultado (objeto de modelo/boolean) vuelve hasta la Vista; se muestra
 
 ### Database Schema (Normalized to 4NF)
 
+Todo el esquema (tablas + los 52 stored procedures + datos semilla) vive en un **único
+archivo**: `educg_db.sql`, en la raíz del repo. Es un dump completo (`mysqldump
+--routines --databases`) de la base real — no hay `schema.sql` ni scripts incrementales
+separados; para reconstruir la base desde cero alcanza con correr ese único archivo.
+
 | Table | Purpose | Key Fields |
 |-------|---------|-----------|
-| **usuarios** | User accounts | id (PK), email (UNIQUE), password_hash (salt:sha256), nombre, apellido, dni (BIGINT, NOT NULL), telefono (VARCHAR(20), NOT NULL), activo (soft delete) |
-| **cursos** | Course catalog | id, emoji, titulo, descripcion, duracion |
-| **curso_contenidos** | Course lessons (title + body, resolves 1NF) | curso_id (FK), orden, topico, contenido (TEXT — texto completo de la lección) |
+| **usuarios** | User accounts | id (PK), email (UNIQUE), password_hash (salt:sha256), nombre, apellido, dni (BIGINT), telefono (VARCHAR(20)), es_admin (TINYINT(1), default 0), activo (soft delete), fecha_creacion, fecha_modificacion |
+| **cursos** | Course catalog | id, emoji, titulo (UNIQUE), descripcion, duracion, activo (soft delete), fecha_creacion, fecha_modificacion |
+| **curso_contenidos** | Course lessons (title + body, resolves 1NF) | curso_id (FK), orden, topico, contenido (LONGTEXT — texto completo de la lección), ejercicio_propuesto (TEXT NULL — enunciado opcional del wizard "Crear Curso"), respuesta_esperada (VARCHAR(255) NULL — obligatoria si hay ejercicio, se usa para verificarlo), activo |
 | **inscripciones** | User-course enrollments (N:M) | usuario_id (FK), curso_id (FK), fecha_inscripcion, activo, leccion_actual (TINYINT, progreso guardado en qué lección paró) |
-| **test_resultados** | Test attempt scores | usuario_id (FK), curso_id (FK), test_nombre, puntaje, fecha |
-| **test_preguntas** | Quiz question bank (10 per course) | curso_id (FK), enunciado, orden |
+| **test_resultados** | Test attempt scores | usuario_id (FK), curso_id (FK), puntaje, aprobado (TINYINT(1), calculado por el procedure al insertar), fecha |
+| **test_preguntas** | Quiz question bank (20 per course, 10 elegidas al azar por intento) | curso_id (FK), enunciado, orden, activo |
 | **test_opciones** | Multiple-choice options per question | pregunta_id (FK), texto, es_correcta, orden |
-| **test_respuestas_usuario** | Which option the user picked, per attempt | test_resultado_id (FK), pregunta_id (FK), opcion_elegida_id (FK) |
+| **test_respuestas_usuario** | Which option the user picked, per attempt | test_resultado_id (FK), pregunta_id (FK), opcion_elegida_id (FK), es_correcta |
+| **certificados** | Certificado emitido (uno por usuario+curso, `INSERT IGNORE` desde `sp_alta_resultado_test` al aprobar) | usuario_id (FK), curso_id (FK), test_resultado_id (FK), puntaje, fecha_emision |
+| **auditoria_cambios** | Log de cambios para futuras auditorías del panel admin (no usada por el código Java todavía) | usuario_admin_id (FK, SET NULL), tabla_afectada, registro_id, accion, datos_anteriores/datos_nuevos (JSON), fecha, ip_origen |
 
-`dni` y `telefono` son **NOT NULL** — por eso `VentanaRegistro` los pide obligatoriamente
-(validados por `Validador.esDniValido()`/`esTelefonoValido()`); no hay forma de
-crear un usuario sin esos dos datos.
+No hay columna `rol`: el rol de administrador es el booleano `usuarios.es_admin`
+(`UsuarioDAOJdbc.esAdmin()` lo lee de `sp_obtener_usuario`). `dni`/`telefono` siguen
+siendo obligatorios a nivel de `Validador`/`VentanaRegistro`, pero a diferencia de una
+versión anterior de este archivo, la base actual **no** tiene un `UNIQUE` en `dni`.
 
-Initialize with:
+Inicializar con:
 ```bash
-mysql -u root -p < schema.sql
-mysql -u root -p educg_db < stored_procedures_test.sql
-mysql -u root -p educg_db < stored_procedures_test_v2.sql
+mysql -u root -p < educg_db.sql
 ```
-
-`stored_procedures_test.sql` es un script **adicional** (no reemplaza a `schema.sql`):
-agrega la columna `contenido` a `curso_contenidos`, las 3 tablas de test_preguntas/
-test_opciones/test_respuestas_usuario, carga el contenido de las lecciones y las 10
-preguntas por curso, y redefine `sp_alta_resultado_test` con un parámetro `OUT`
-adicional (el id del resultado creado). Correlo siempre después de `schema.sql`. La
-carga de preguntas/opciones **no es re-ejecutable** (tiene una `UNIQUE KEY` que
-fallaría en un segundo run) — ver el comentario al inicio del archivo si hace falta
-recargarlas.
-
-`stored_procedures_test_v2.sql` es otro script adicional, a correr después de
-`stored_procedures_test.sql`: reemplaza el contenido de las 36 lecciones por una
-versión mucho más extensa ("que parezca un curso real"), agrega 10 preguntas más
-por curso (orden 11-20, banco total = 20 preguntas/curso) y redefine
-`sp_listar_preguntas_curso` para que elija **10 preguntas al azar de las 20**
-disponibles en cada llamada (vía una tabla temporal con un `RAND()` fijado una sola
-vez por llamada), en vez de devolver siempre las mismas 10. La sección de contenido
-es re-ejecutable (`UPDATE`/`ON DUPLICATE KEY UPDATE`); la carga de preguntas 11-20
-no lo es, por el mismo motivo que en `stored_procedures_test.sql`.
+Eso alcanza para tener el sistema completo funcionando: las 10 tablas, los 52
+procedures y datos semilla (6 cursos, 36 lecciones, 120 preguntas/480 opciones, y una
+cuenta admin — ver más abajo). Es un dump completo (`DROP TABLE IF EXISTS` +
+`CREATE TABLE` por tabla), así que correrlo sobre una base existente la reemplaza
+por completo; no es un script incremental.
 
 ### Stored Procedures
 
 Todo el acceso a datos pasa por stored procedures — **nunca** SQL embebido en Java.
-Conveción de nombres: `sp_<accion>_<entidad>` (`alta` = crear, `modificar` = actualizar,
-`baja` = baja lógica, `obtener` = traer un registro/valor puntual, `listar` = traer varias filas).
+La convención de nombres mezcla dos generaciones: los procedures del flujo de alumno
+más viejos usan `sp_<accion>_<entidad>` con `alta`/`baja`/`modificar`/`obtener`/`listar`;
+los del panel de administrador (más nuevos) usan `crear`/`activar`/`desactivar`/
+`eliminar`/`buscar`/`estadisticas`. Ambas conviven; no vale la pena unificarlas.
 
 | Procedure | Usado por |
 |-----------|-----------|
-| `sp_alta_usuario` | `UsuarioDAOJdbc.altaUsuario()` — chequea email duplicado internamente (OUT 1/0) |
-| `sp_obtener_usuario` | `UsuarioDAOJdbc.obtenerUsuario()` / `obtenerHashPassword()` |
-| `sp_modificar_usuario` | `UsuarioDAOJdbc.modificarDatosPersonales()` |
+| `sp_alta_usuario` | `UsuarioDAOJdbc.altaUsuario()` — OUT p_resultado (1/0 duplicado) + OUT p_usuario_id |
+| `sp_obtener_usuario` | `UsuarioDAOJdbc.obtenerUsuario()` / `esAdmin()` — filtra `activo=1` |
+| `sp_obtener_hash_password` | `UsuarioDAOJdbc.obtenerHashPassword()` — filtra `activo=1` (una cuenta dada de baja no puede loguearse) |
+| `sp_modificar_usuario` | `UsuarioDAOJdbc.modificarDatosPersonales()` — incluye email (a diferencia de la versión con la que se creó la base, que no lo actualizaba) |
 | `sp_modificar_password_usuario` | `UsuarioDAOJdbc.modificarPassword()` |
-| `sp_alta_inscripcion` | `InscripcionDAOJdbc.altaInscripcion()` — OUT 1=nueva/reactivada, 0=ya activa, -1=no existe |
-| `sp_baja_inscripcion` | `InscripcionDAOJdbc.bajaInscripcion()` |
+| `sp_alta_inscripcion` | `InscripcionDAOJdbc.altaInscripcion()` — por `curso_id`, OUT 1=nueva/reactivada, 0=ya activa, -1=no existe |
+| `sp_baja_inscripcion` | `InscripcionDAOJdbc.bajaInscripcion()` — por email + `curso_id` |
 | `sp_obtener_inscripcion` | `InscripcionDAOJdbc.estaInscripto()` |
 | `sp_listar_inscripciones_usuario` | `InscripcionDAOJdbc.listarPorUsuario()` |
 | `sp_listar_resultados_test_usuario` | `ResultadoTestDAOJdbc.listarPorUsuario()` |
-| `sp_obtener_estadisticas_usuario` | `ResultadoTestDAOJdbc.obtenerEstadisticas()` |
-| `sp_listar_cursos_catalogo` | `CursoDAOJdbc.listarCatalogo()` |
-| `sp_listar_contenidos_curso` | `CursoDAOJdbc.listarLecciones()` (privado) |
-| `sp_listar_preguntas_curso` | `TestPreguntasDAOJdbc.listarPorCurso()` |
-| `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — OUT con el id del intento creado (usado para asociar las respuestas) |
+| `sp_obtener_estadisticas_usuario` | `ResultadoTestDAOJdbc.obtenerEstadisticas()` — `cursos_completados`/`tests_realizados`/`promedio_puntaje` |
+| `sp_listar_cursos_catalogo` | `CursoDAOJdbc.listarCatalogo()` — filtra `activo=1` |
+| `sp_listar_contenidos_curso` | `CursoDAOJdbc.listarLecciones()` (privado) — por `curso_id`, no por título |
+| `sp_listar_preguntas_curso` | `TestPreguntasDAOJdbc.listarPorCurso()` — por `curso_id`; 10 al azar de 20, JOIN con `test_opciones` |
+| `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — por `curso_id`, calcula `aprobado` y emite certificado si corresponde |
 | `sp_alta_respuesta_test` | `ResultadoTestDAOJdbc.registrarRespuesta()` |
-| `sp_obtener_mejor_puntaje_curso` | `ResultadoTestDAOJdbc.obtenerMejorPuntaje()` — define si el curso aparece "Aprobado" |
-| `sp_obtener_progreso_inscripcion` | `InscripcionDAOJdbc.obtenerProgreso()` — lee la lección actual guardada para un usuario+curso |
-| `sp_modificar_progreso_inscripcion` | `InscripcionDAOJdbc.actualizarProgreso()` — guarda el índice de lección en que quedó el usuario |
+| `sp_obtener_mejor_puntaje_curso` | `ResultadoTestDAOJdbc.obtenerMejorPuntaje()` — mejor puntaje histórico (apruebe o no), -1 si nunca lo rindió |
+| `sp_obtener_progreso_inscripcion` / `sp_modificar_progreso_inscripcion` | `InscripcionDAOJdbc` — por `curso_id` |
+| `sp_crear_curso` / `sp_modificar_curso` / `sp_activar_curso` / `sp_desactivar_curso` / `sp_eliminar_curso` | `AdminCursoDAOJdbc` (admin) |
+| `sp_listar_todos_cursos` / `sp_buscar_todos_cursos` | `AdminCursoDAOJdbc.listarTodos()`/`buscarPorNombreLike()` — incluyen inactivos, a diferencia de `sp_listar_cursos_catalogo` |
+| `sp_crear_leccion` | `AdminCursoDAOJdbc` — alta de un ítem del Plan de Estudio (wizard), incluye `ejercicio_propuesto` |
+| `sp_crear_pregunta` / `sp_crear_opcion_pregunta` | `AdminCursoDAOJdbc` — alta de preguntas/opciones (paso 4 del wizard) |
+| `sp_listar_todos_usuarios` | `AdminAlumnoDAOJdbc.listarTodos()` — solo `es_admin=0` (alumnos) |
+| `sp_buscar_usuario_por_dni` | `AdminAlumnoDAOJdbc.buscarPorDni()` — coincidencia exacta, incluye inactivos |
+| `sp_activar_usuario` / `sp_desactivar_usuario` / `sp_eliminar_usuario` | `AdminAlumnoDAOJdbc` (admin) |
+| `sp_estadisticas_generales` / `sp_estadisticas_por_curso` / `sp_estadisticas_registros_mensuales` | `AdminEstadisticasDAOJdbc` |
 
-Definidos en `stored_procedures.sql` + `schema.sql` (base) y en `stored_procedures_test.sql`
-(catálogo DB-driven + test/certificado, ver más arriba). Si agregás o cambiás un
-procedure, mantené los archivos correspondientes en sync.
+Hay además un puñado de procedures del esquema original (`sp_buscar_usuarios`,
+`sp_buscar_cursos`, `sp_listar_usuarios`, `sp_contar_*`, `sp_promedio_calificaciones`,
+`sp_listar_certificados_*`, `sp_obtener_curso`, `sp_obtener_leccion`,
+`sp_obtener_usuario_por_id`, `sp_modificar_leccion`, `sp_desactivar_leccion`) que hoy
+**no llama ningún código Java** — quedaron del diseño original de la base y son
+candidatos naturales si se agrega, por ejemplo, gestión de certificados emitidos o
+edición de lecciones ya creadas.
 
 Todos los procedures que necesitan resolver "qué usuario" reciben el **email**
-directamente (nunca el `id` numérico) y lo resuelven internamente — el backend Java
-no necesita hacer un round-trip previo para obtener el id.
+directamente (nunca el `id` numérico) y lo resuelven internamente; los que necesitan
+"qué curso" reciben el **id** (no el título — cambio respecto de versiones anteriores
+de esta base, donde algunos procedures tomaban el título).
 
 ## Build & Run
 
@@ -226,16 +234,47 @@ All Swing components created via `FabricaUI` static factories (which read colors
 
 ### Course Catalog & Content (DB-driven)
 
-El catálogo ya NO está hardcodeado en Java: `servicio.ServicioCursos` (vía `dao.CursoDAO`) lee `cursos` + `curso_contenidos` de la base. Para agregar un curso:
+El catálogo ya NO está hardcodeado en Java: `servicio.ServicioCursos` (vía `dao.CursoDAO`) lee `cursos` + `curso_contenidos` de la base, y `modelo.Curso` ahora lleva su `id` (además de emoji/título/descripción/duración/lecciones) porque el resto de los procedures (contenidos, preguntas, inscripciones, resultados) identifican al curso por `id`, no por título — solo `ServicioCursos.buscarPorTitulo()` sigue resolviendo por título, filtrando en Java sobre `listarCatalogo()`. Para agregar un curso a mano (fuera del wizard admin):
 1. `INSERT INTO cursos (emoji, titulo, descripcion, duracion) VALUES (...);`
-2. `INSERT INTO curso_contenidos (curso_id, orden, topico, contenido) VALUES (...)` — una fila por lección (orden 0 = "Introducción", 1-N = clases), con el texto completo en `contenido`
-3. Al menos 20 preguntas en `test_preguntas` + 4 opciones cada una en `test_opciones` (ver el patrón en `stored_procedures_test.sql`/`stored_procedures_test_v2.sql`) — `sp_listar_preguntas_curso` elige 10 al azar del banco disponible en cada llamada
+2. `INSERT INTO curso_contenidos (curso_id, orden, topico, contenido, ejercicio_propuesto) VALUES (...)` — una fila por lección (orden 0 = "Introducción", 1-N = clases), con el texto completo en `contenido`
+3. Al menos 20 preguntas en `test_preguntas` + 4 opciones cada una en `test_opciones` — `sp_listar_preguntas_curso` elige 10 al azar del banco disponible en cada llamada
 
-`modelo.Curso.getTopicos()` deriva los títulos de lección desde `getLecciones()` (no se duplica el dato).
+`modelo.Curso.getTopicos()` deriva los títulos de lección desde `getLecciones()` (no se duplica el dato). Desde el panel de administrador, todo esto se hace vía el wizard "Crear Curso" (`vista.admin.VentanaCrearCurso`) en vez de SQL a mano — ver "Panel de Administrador" más abajo.
+
+### Circuito de clases con ejercicio propuesto
+
+`VentanaContenidoCurso` no pagina solo lecciones: arma internamente una lista de **pasos**
+(`Paso`, clase privada con `leccionIndex` + `esEjercicio`) intercalando, después de cada
+lección que tenga `ejercicio_propuesto` no vacío (`Leccion.tieneEjercicio()`), un paso extra
+de ejercicio para esa misma lección. El botón "Siguiente" avanza un paso a la vez; si el paso
+actual es un ejercicio sin resolver (`ejerciciosResueltos`, un `Set<Integer>` en memoria, vive
+solo mientras la ventana está abierta), el botón queda **deshabilitado** hasta que el alumno
+escribe la respuesta correcta en el campo de texto y hace clic en "Verificar"
+(`ControladorCursos.verificarRespuestaEjercicio()`, comparación case-insensitive e
+ignorando espacios extra contra `Leccion.getRespuestaEsperada()`, sin acceso a la base — es
+lógica pura). Si una lección no tiene ejercicio, el paso de ejercicio simplemente no existe en
+la lista y "Siguiente" pasa directo a la próxima lección. El último paso (sea lección o
+ejercicio) muestra "Hacer Test" en vez de "Siguiente →".
+
+**Progreso persistido:** `inscripciones.leccion_actual` sigue significando índice de *lección*
+(0-based), no de paso — al guardar progreso siempre se persiste `pasos.get(pasoActual)
+.leccionIndex`, así que estar viendo el ejercicio de la lección 2 también guarda "lección 2"
+(todavía no se pasó de ahí). Al reabrir el curso, `cargarProgreso()` siempre reanuda en el
+paso de **lección** (nunca a mitad de un ejercicio de una sesión anterior) — si esa lección
+tenía un ejercicio sin resolver, hay que volver a resolverlo. Esto también mantiene sin
+cambios el significado que ya asumía `ServicioChatbot` al armar el contexto ("lección X de Y").
+
+Para cargar un ejercicio a mano: `curso_contenidos.ejercicio_propuesto` (enunciado) y
+`respuesta_esperada` (obligatoria si hay enunciado — sin ella, el alumno nunca podría
+avanzar). El wizard admin (`VentanaCrearCurso`, paso 3) exige ambos campos juntos
+(`ControladorCrearCurso.validarPaso3()`); si se borra el ejercicio, la respuesta esperada se
+descarta también aunque haya quedado texto tipeado.
 
 ### Test final y certificado
 
-Cada curso tiene un banco de 20 preguntas multiple-choice (`test_preguntas`/`test_opciones`); `sp_listar_preguntas_curso` elige 10 al azar en cada llamada, así el test no es siempre igual. `VentanaTest` las muestra con `JRadioButton` agrupados por pregunta; al finalizar, `ControladorTest`/`ServicioTest` corrigen contra `es_correcta`, guardan el intento en `test_resultados` (vía `sp_alta_resultado_test`, que ahora devuelve el id creado) y cada respuesta elegida en `test_respuestas_usuario`. Puntaje ≥ `ServicioTest.PUNTAJE_APROBACION` (60/100) ⇒ el curso queda "Aprobado" en `VentanaContenidoCurso`, habilitando el botón "Ver Certificado" (`VentanaCertificado`, una vista generada a partir de nombre/curso/fecha/puntaje — no se persiste como entidad separada).
+Cada curso tiene un banco de 20 preguntas multiple-choice (`test_preguntas`/`test_opciones`); `sp_listar_preguntas_curso` elige 10 al azar en cada llamada, así el test no es siempre igual. `VentanaTest` las muestra con `JRadioButton` agrupados por pregunta; al finalizar, `ControladorTest`/`ServicioTest` corrigen contra `es_correcta`, guardan el intento en `test_resultados` (vía `sp_alta_resultado_test`, que calcula `aprobado` internamente — puntaje ≥ 60 — y devuelve el id creado) y cada respuesta elegida en `test_respuestas_usuario`. `ServicioTest.PUNTAJE_APROBACION` (60/100, del lado Java) tiene que mantenerse en sync con el `60` hardcodeado dentro de `sp_alta_resultado_test`/`sp_estadisticas_por_curso` — SQL no puede leer la constante de Java. Puntaje ≥ 60 ⇒ el curso queda "Aprobado" en `VentanaContenidoCurso`, habilitando el botón "Ver Certificado" (`VentanaCertificado`, una vista generada a partir de nombre/curso/fecha/puntaje).
+
+`sp_alta_resultado_test` también hace `INSERT IGNORE INTO certificados (...)` cuando el intento aprueba — a diferencia de una versión anterior de este archivo, los certificados **sí se persisten** (tabla `certificados`, `UNIQUE(usuario_id, curso_id)` así solo queda registrado el primero); `VentanaCertificado` sigue sin leer esa tabla, la sigue generando on-the-fly, pero el dato ya existe en la base para quien quiera, por ejemplo, un futuro listado de "certificados emitidos" (`sp_listar_certificados_emitidos`/`sp_listar_certificados_usuario`, ya definidos y sin usar todavía).
 
 ### Chatbot flotante ("Robotito")
 
@@ -276,16 +315,92 @@ proveedor y no necesita saber de esta diferencia.
 hilos en segundo plano" del resto de la app — necesaria porque acá hay una llamada HTTP
 real a un servicio externo, y bloquear el EDT congelaría la ventana).
 
+### Panel de Administrador
+
+El rol de administrador es el booleano `usuarios.es_admin` (no una columna `rol`).
+`VentanaLogin.manejarLogin()` llama a `ControladorLogin.esAdmin(email)` (→ `ServicioAuth`
+→ `UsuarioDAO.esAdmin` → `sp_obtener_usuario`, leyendo la columna `es_admin`) **después**
+de un login exitoso y bifurca a `vista.admin.VentanaAdmin` o a `VentanaCursos` según el
+resultado — el resto del flujo de alumno no cambia. No hay pantalla de login separada;
+`educg_db.sql` ya trae una cuenta admin sembrada (`admin@educg.com`) para arrancar.
+
+Todo el código del panel vive en paquetes propios que siguen las mismas capas Vista→Controlador→
+Servicio→DAO→stored procedures que el resto de la app (`vista.admin`, más `Admin*` en `dao`/
+`servicio`/`controlador`, y `AlumnoAdmin`/`CursoAdmin`/`ItemPlanEstudio`/`Estadisticas*` en
+`modelo`) — no se reutilizan `Usuario`/`Curso`/`Leccion` porque esos modelos no tienen
+id/estado, que el CRUD de administrador necesita.
+
+**Alumnos** (`VentanaAdminAlumnos`): alta, búsqueda exacta por DNI (`sp_buscar_usuario_por_dni`,
+incluye inactivos, excluye admins), listado completo activos+inactivos (`sp_listar_todos_usuarios`,
+filtra `es_admin=0`) y, por fila, Modificar/Baja Lógica (o Reactivar)/Eliminar.
+`sp_desactivar_usuario`/`sp_activar_usuario` togglean `activo` (que ya bloqueaba el login antes
+de este panel, vía el filtro en `sp_obtener_usuario`/`sp_obtener_hash_password`);
+`sp_eliminar_usuario` borra en cascada (inscripciones, resultados de tests, certificados).
+
+**Cursos** (`VentanaAdminCursos`): alta solo vía el wizard "Crear Curso" (no hay alta rápida de
+un curso sin plan de estudio), búsqueda por nombre con `LIKE` (`sp_buscar_todos_cursos`, incluye
+inactivos — a diferencia de `sp_buscar_cursos`, que es del esquema original y filtra `activo=1`),
+listado completo (`sp_listar_todos_cursos`) y, por fila, Modificar (`DialogoFormCurso`, solo
+emoji/título/descripción/duración — no reabre el wizard de plan de estudio, usa `sp_modificar_curso`)/
+Baja Lógica (o Reactivar, `sp_desactivar_curso`/`sp_activar_curso`)/Eliminar (`sp_eliminar_curso`).
+`sp_listar_cursos_catalogo` (el que usa `VentanaCursos` del lado alumno) filtra `activo = 1`:
+dar de baja un curso lo oculta del catálogo y, como `ServicioCursos.buscarPorTitulo` reutiliza
+esa misma consulta, también corta el acceso al contenido para alumnos ya inscriptos.
+
+**Wizard "Crear Curso"** (`VentanaCrearCurso`, estado en memoria en `ControladorCrearCurso`,
+persistido recién al final): 4 pasos navegados con Atrás/Siguiente, sin `CardLayout` — cada
+paso se reconstruye desde el estado del controlador al entrar:
+1. Datos básicos (emoji/título/descripción/duración) + alta dinámica de ítems del Plan de
+   Estudio (uno por tema/clase, sin contenido todavía).
+2. Cada ítem en un acordeón (`vista.componentes.PanelDesplegable`, reutilizable) con un
+   `JTextArea` para el contenido teórico — obligatorio para avanzar.
+3. Mismos acordeones, `JTextArea` opcional para el enunciado del ejercicio propuesto + un
+   campo de texto para la "respuesta esperada" (se puede dejar vacío el ejercicio por clase;
+   pero si hay enunciado, la respuesta esperada es obligatoria — ver "Circuito de clases con
+   ejercicio propuesto" más abajo, el alumno la necesita para poder avanzar).
+4. Alta de preguntas multiple-choice una por una (enunciado + 2 a 6 opciones + radio button
+   para marcar la correcta) contra una lista en memoria; "Guardar Curso" recién ahí persiste todo.
+
+El guardado final (`ServicioAdminCursos.guardarCursoCompleto` → `AdminCursoDAOJdbc
+.guardarCursoCompleto`) es la única excepción al patrón "una conexión por método" del resto
+de los DAO: abre una única `Connection` con `setAutoCommit(false)`, hace el alta del curso
+(`sp_crear_curso`; si el título ya existe, la `UNIQUE KEY` de `cursos.titulo` tira
+`SQLIntegrityConstraintViolationException`, que el DAO atrapa y traduce a "devolver -1" en vez
+de dejar propagar la excepción) + un `sp_crear_leccion` por ítem (incluye `ejercicio_propuesto`)
++ un `sp_crear_pregunta`/`sp_crear_opcion_pregunta` por pregunta/opción, y recién comitea al
+final — si algo fallara a mitad de camino, hace `rollback()` y no queda un curso a medias.
+
+**Estadísticas** (`VentanaAdminEstadisticas`, solo lectura): tarjetas KPI (alumnos activos/
+inactivos, cursos activos, inscripciones activas, aprobaciones totales — `sp_estadisticas_generales`),
+barras horizontales de inscriptos por curso y de altas de alumnos por mes (reutilizan
+`vista.componentes.BarraProgreso`, el mismo componente del test) y una tabla de detalle por
+curso (inscriptos/promedio/% de aprobación — `sp_estadisticas_por_curso`, `sp_estadisticas_registros_mensuales`).
+"Aprobado" en estas métricas usa el mismo umbral que el resto de la app
+(`ServicioTest.PUNTAJE_APROBACION`, hardcodeado como `>= 60` en los procedures ya que SQL no
+puede leer esa constante de Java).
+
+**Tabla con botones de acción**: tanto `VentanaAdminAlumnos` como `VentanaAdminCursos` usan
+`vista.componentes.ColumnaAcciones` (renderer+editor de `JTable` reutilizable, patrón estándar
+de Swing para botones dentro de una celda) en vez de duplicar esa lógica — cada fila define sus
+acciones con una lista de `ColumnaAcciones.AccionBoton`, cuya etiqueta puede depender del estado
+de esa fila (p. ej. "Baja Lógica" vs. "Reactivar" según `activo`).
+
 ### Navigation Flow
 
 ```
 Main → VentanaLogin
   ├─ [Registrarse] → VentanaRegistro → vuelve a VentanaLogin al cerrar
-  └─ [Login exitoso] → VentanaCursos
-       ├─ [Mi Panel] → VentanaPanelUsuario (vuelve a VentanaCursos)
-       └─ [Iniciar Curso / Ingresar] → VentanaContenidoCurso
-            ├─ [Hacer Test] → VentanaTest → corrige y vuelve a VentanaContenidoCurso
-            └─ [Ver Certificado] → VentanaCertificado (ventana secundaria, no reemplaza a la anterior)
+  └─ [Login exitoso, rol='alumno'] → VentanaCursos
+  │    ├─ [Mi Panel] → VentanaPanelUsuario (vuelve a VentanaCursos)
+  │    └─ [Iniciar Curso / Ingresar] → VentanaContenidoCurso
+  │         ├─ [Hacer Test] → VentanaTest → corrige y vuelve a VentanaContenidoCurso
+  │         └─ [Ver Certificado] → VentanaCertificado (ventana secundaria, no reemplaza a la anterior)
+  └─ [Login exitoso, rol='admin'] → vista.admin.VentanaAdmin
+       ├─ [Alumnos] → VentanaAdminAlumnos (alta/DialogoFormAlumno, baja, eliminar)
+       ├─ [Cursos] → VentanaAdminCursos
+       │    ├─ [Modificar] → DialogoFormCurso
+       │    └─ [+ Crear Curso] → VentanaCrearCurso (wizard de 4 pasos) → vuelve a VentanaAdminCursos
+       └─ [Estadísticas] → VentanaAdminEstadisticas
 ```
 
 Each window is a `JFrame` (via `VentanaBase`). Navigation uses `setVisible(true/false)` rather than hiding/showing a single frame; each `Ventana*` builds its own `Controlador*` internally (no contenedor de inyección de dependencias — no se justifica para el tamaño del proyecto).
@@ -294,7 +409,7 @@ Each window is a `JFrame` (via `VentanaBase`). Navigation uses `setVisible(true/
 
 ### Add a user field (e.g., profile picture URL)
 
-1. Add column to `usuarios` table in `schema.sql` **and** `stored_procedures.sql`/`schema.sql`'s procedure definitions (`sp_alta_usuario`, `sp_obtener_usuario`, `sp_modificar_usuario` as needed) — keep both SQL files in sync
+1. `ALTER TABLE usuarios ADD COLUMN ...` against the running database, update the relevant procedure definitions (`sp_alta_usuario`, `sp_obtener_usuario`, `sp_modificar_usuario` as needed), then re-export `educg_db.sql` so the single file reflects the change
 2. Add getter/setter to `modelo.Usuario` and the corresponding method to `dao.UsuarioDAO`/`UsuarioDAOJdbc` (calls the updated stored procedure via `CallableStatement`)
 3. Expose it via `servicio.ServicioUsuario` and `controlador.ControladorPanelUsuario`
 4. Update `vista.VentanaPanelUsuario` UI to display/edit the field
@@ -415,11 +530,11 @@ Dialogs automatically animate in/out and success/info dialogs auto-close after 2
 
 ## Notes for Onboarding
 
-- **New developer checklist:** Run `mysql -u root -p < schema.sql`, then `mysql -u root -p educg_db < stored_procedures_test.sql`, populate `.env`, ensure MySQL is on localhost:3306. `CHATBOT_API_KEY` is optional — without it the chatbot bubble still opens but shows a friendly error when you try to send a message.
+- **New developer checklist:** Run `mysql -u root -p < educg_db.sql` (single file — schema, all 52 procedures, and seed data), populate `.env`, ensure MySQL is on localhost:3306. `CHATBOT_API_KEY` is optional — without it the chatbot bubble still opens but shows a friendly error when you try to send a message. The dump already seeds an admin account (`admin@educg.com` — ask whoever ran the dump for the password, or update it directly: `UPDATE usuarios SET password_hash='<hash>' WHERE email='admin@educg.com';`, hash format is `HasheadorPassword`'s `saltHex:sha256Hex`).
 - **Hardcoded strings:** All UI text is in Spanish; no localization mechanism exists
 - **No background threads (except the chatbot):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. The one deliberate exception is `VentanaChatFlotante`, which uses `SwingWorker` for the HTTP call to the AI provider — that's a real external network call, not local MySQL, so blocking the EDT would freeze the window.
-- **Test results:** `test_resultados` is now populated by `VentanaTest` (`sp_alta_resultado_test`); `test_respuestas_usuario` records each individual answer per attempt
+- **Test results:** `test_resultados` is now populated by `VentanaTest` (`sp_alta_resultado_test`, which also computes `aprobado` and emits a certificate row); `test_respuestas_usuario` records each individual answer per attempt.
 - **UI Consistency:** When adding new features, **always use `EstiloUI` constants** for colors, fonts, and dimensions. Breaking this rule will require refactoring.
-- **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a procedure to both `stored_procedures.sql` and `schema.sql` (or to `stored_procedures_test.sql` if it belongs to the course-content/test feature), following the `sp_<accion>_<entidad>` naming convention.
-- **`dni`/`telefono` are required:** added as `NOT NULL` columns on `usuarios`; `sp_alta_usuario` will fail without them. `VentanaRegistro` collects both.
-- **Certificates are not persisted:** `VentanaCertificado` is generated on the fly from `nombre` + `curso` + `puntaje` + the current date — there is no `certificados` table. If a fixed issue date per approval is ever needed, it can be derived from the qualifying `test_resultados.fecha` row instead of adding new storage.
+- **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a `CREATE PROCEDURE` directly against the running database and re-export `educg_db.sql` (`mysqldump --routines --triggers --single-transaction --add-drop-table --databases educg_db > educg_db.sql`) so the single file stays the source of truth — there's no separate incremental-migration file to edit anymore.
+- **`dni`/`telefono` are required:** at the app layer (`Validador`/`VentanaRegistro`); `sp_alta_usuario` will fail without them since they're `NOT NULL` columns, but unlike an earlier version of this schema, `dni` does **not** have a `UNIQUE` constraint in the database — duplicates aren't blocked at the DB level.
+- **Certificates ARE persisted** (unlike an earlier version of this app): `sp_alta_resultado_test` does `INSERT IGNORE INTO certificados` when a test attempt approves (`UNIQUE(usuario_id, curso_id)` keeps only the first). `VentanaCertificado` still generates its view on the fly rather than reading that table, but the data exists for a future "certificados emitidos" screen (`sp_listar_certificados_emitidos` is already defined, unused by Java so far).

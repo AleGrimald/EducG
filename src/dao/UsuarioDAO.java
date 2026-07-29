@@ -10,13 +10,17 @@ public interface UsuarioDAO {
     int altaUsuario(String email, String passwordHash, String nombre, String apellido,
                      long dni, String telefono) throws SQLException;
 
-    /** @return Usuario con nombre/apellido/email, o null si no existe/está inactivo */
+    /** @return Usuario con id/nombre/apellido/email/dni/telefono, o null si no existe/está inactivo */
     Usuario obtenerUsuario(String email) throws SQLException;
 
     /** @return el hash almacenado (formato saltHex:hashHex), o null si no existe/está inactivo */
     String obtenerHashPassword(String email) throws SQLException;
 
-    boolean modificarDatosPersonales(String email, String nombre, String apellido) throws SQLException;
+    boolean modificarDatosPersonales(int id, String email, String nombre, String apellido,
+                                      long dni, String telefono) throws SQLException;
 
     boolean modificarPassword(String email, String nuevoHash) throws SQLException;
+
+    /** @return true si la cuenta es de administrador, false si es alumno o no existe/está inactivo */
+    boolean esAdmin(String email) throws SQLException;
 }

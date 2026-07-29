@@ -14,8 +14,8 @@ public class ControladorTest {
 
     private final ServicioTest servicioTest = new ServicioTest(new TestPreguntasDAOJdbc(), new ResultadoTestDAOJdbc());
 
-    public List<PreguntaTest> obtenerPreguntas(String cursoTitulo) throws SQLException {
-        return servicioTest.obtenerPreguntas(cursoTitulo);
+    public List<PreguntaTest> obtenerPreguntas(int cursoId) throws SQLException {
+        return servicioTest.obtenerPreguntas(cursoId);
     }
 
     /**
@@ -23,18 +23,18 @@ public class ControladorTest {
      * @param respuestas mapa preguntaId -> opcionElegidaId
      * @return puntaje obtenido (0-100)
      */
-    public int corregirYGuardar(String email, String cursoTitulo, List<PreguntaTest> preguntas,
+    public int corregirYGuardar(String email, int cursoId, List<PreguntaTest> preguntas,
                                  Map<Integer, Integer> respuestas) throws SQLException {
-        return servicioTest.corregirYGuardar(email, cursoTitulo, preguntas, respuestas);
+        return servicioTest.corregirYGuardar(email, cursoId, preguntas, respuestas);
     }
 
-    public boolean estaAprobado(String email, String cursoTitulo) throws SQLException {
-        return servicioTest.estaAprobado(email, cursoTitulo);
+    public boolean estaAprobado(String email, int cursoId) throws SQLException {
+        return servicioTest.estaAprobado(email, cursoId);
     }
 
     /** @return el mejor puntaje obtenido, o -1 si nunca rindió el test */
-    public int obtenerMejorPuntaje(String email, String cursoTitulo) throws SQLException {
-        return servicioTest.obtenerMejorPuntaje(email, cursoTitulo);
+    public int obtenerMejorPuntaje(String email, int cursoId) throws SQLException {
+        return servicioTest.obtenerMejorPuntaje(email, cursoId);
     }
 
     public static int puntajeAprobacion() {

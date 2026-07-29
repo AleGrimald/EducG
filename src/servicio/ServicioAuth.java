@@ -20,6 +20,11 @@ public class ServicioAuth {
         return hashAlmacenado != null && HasheadorPassword.verificar(password, hashAlmacenado);
     }
 
+    /** @return true si la cuenta es de administrador */
+    public boolean esAdmin(String email) throws SQLException {
+        return usuarioDAO.esAdmin(email);
+    }
+
     /** @return true si el registro fue exitoso, false si el email ya existe */
     public boolean registrar(String email, String password, String nombre, String apellido,
                               long dni, String telefono) throws SQLException {

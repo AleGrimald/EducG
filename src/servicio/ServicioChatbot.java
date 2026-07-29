@@ -55,14 +55,14 @@ public class ServicioChatbot {
                 sb.append("- ").append(titulo);
                 try {
                     Curso curso = servicioCursos.buscarPorTitulo(titulo);
-                    int progreso = servicioInscripcion.obtenerProgreso(email, titulo);
+                    int progreso = servicioInscripcion.obtenerProgreso(email, insc.getCursoId());
                     int totalLecciones = (curso != null) ? curso.getLecciones().size() : 0;
-                    int mejorPuntaje = servicioTest.obtenerMejorPuntaje(email, titulo);
+                    int mejorPuntaje = servicioTest.obtenerMejorPuntaje(email, insc.getCursoId());
                     sb.append(" — lección ").append(progreso + 1).append(" de ").append(totalLecciones);
                     if (mejorPuntaje == -1) {
                         sb.append(", todavía no rindió el test final");
                     } else {
-                        boolean aprobado = servicioTest.estaAprobado(email, titulo);
+                        boolean aprobado = servicioTest.estaAprobado(email, insc.getCursoId());
                         sb.append(", test final: ").append(aprobado ? "APROBADO" : "no aprobado")
                           .append(" (mejor puntaje ").append(mejorPuntaje).append("/100)");
                     }

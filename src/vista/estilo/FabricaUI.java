@@ -1,6 +1,8 @@
 package vista.estilo;
 
+import vista.componentes.BotonAccionIcono;
 import vista.componentes.BotonRedondeado;
+import vista.componentes.IconoVectorial;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -81,8 +83,21 @@ public final class FabricaUI {
         return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO);
     }
 
+    public static JButton crearBotonPrimario(String texto, IconoVectorial.Tipo icono) {
+        return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.RELLENO, BotonRedondeado.Tamano.NORMAL, icono);
+    }
+
+    /** Variante con el ícono después del texto (en vez de antes, como el resto de los botones con ícono). */
+    public static JButton crearBotonPrimarioIconoAlFinal(String texto, IconoVectorial.Tipo icono) {
+        return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.RELLENO, BotonRedondeado.Tamano.NORMAL, icono, true);
+    }
+
     public static JButton crearBotonSecundario(String texto) {
         return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.CONTORNO);
+    }
+
+    public static JButton crearBotonSecundario(String texto, IconoVectorial.Tipo icono) {
+        return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.CONTORNO, BotonRedondeado.Tamano.NORMAL, icono);
     }
 
     /** Botón relleno compacto (encabezados, filas de lista) — altura EstiloUI.ALTO_BOTON_PEQUENO. */
@@ -90,8 +105,21 @@ public final class FabricaUI {
         return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.RELLENO, BotonRedondeado.Tamano.PEQUENO);
     }
 
+    public static JButton crearBotonPrimarioPequeno(String texto, IconoVectorial.Tipo icono) {
+        return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.RELLENO, BotonRedondeado.Tamano.PEQUENO, icono);
+    }
+
     /** Botón contorno compacto (encabezados, filas de lista) — altura EstiloUI.ALTO_BOTON_PEQUENO. */
     public static JButton crearBotonSecundarioPequeno(String texto) {
         return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.CONTORNO, BotonRedondeado.Tamano.PEQUENO);
+    }
+
+    public static JButton crearBotonSecundarioPequeno(String texto, IconoVectorial.Tipo icono) {
+        return new BotonRedondeado(texto, EstiloUI.AZUL_CLARO, BotonRedondeado.Estilo.CONTORNO, BotonRedondeado.Tamano.PEQUENO, icono);
+    }
+
+    /** Botón compacto solo-ícono con tooltip, para acciones dentro de tablas u otras barras densas. */
+    public static JButton crearBotonAccionIcono(IconoVectorial.Tipo tipo, Color color, String tooltip) {
+        return new BotonAccionIcono(tipo, color, tooltip);
     }
 }

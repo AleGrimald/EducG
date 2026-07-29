@@ -14,14 +14,14 @@ import java.util.Map;
 public class TestPreguntasDAOJdbc implements TestPreguntasDAO {
 
     @Override
-    public List<PreguntaTest> listarPorCurso(String cursoTitulo) throws SQLException {
+    public List<PreguntaTest> listarPorCurso(int cursoId) throws SQLException {
         Map<Integer, String> enunciados = new LinkedHashMap<>();
         Map<Integer, List<OpcionTest>> opcionesPorPregunta = new LinkedHashMap<>();
 
         final String sql = "{call sp_listar_preguntas_curso(?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setString(1, cursoTitulo);
+            cs.setInt(1, cursoId);
             try (ResultSet rs = cs.executeQuery()) {
                 while (rs.next()) {
                     int preguntaId = rs.getInt("pregunta_id");

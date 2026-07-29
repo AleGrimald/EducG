@@ -1,10 +1,12 @@
 package vista;
 
 import vista.componentes.BurbujaRobotito;
+import vista.componentes.IconoPng;
 import vista.componentes.VentanaChatFlotante;
 import vista.estilo.EstiloUI;
 
 import javax.swing.*;
+import java.awt.Image;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 
@@ -18,6 +20,9 @@ public abstract class VentanaBase extends JFrame {
         setDefaultCloseOperation(operacionCierre);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(true);
+
+        Image icono = IconoPng.obtener("usuario.png", EstiloUI.MORADO_ACENTO, 32);
+        if (icono != null) setIconImage(icono);
     }
 
     /** Agrega la burbuja flotante de chatbot ("Robotito") a esta ventana. Opt-in: cada ventana que la

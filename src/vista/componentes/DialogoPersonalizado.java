@@ -213,6 +213,12 @@ public class DialogoPersonalizado extends JDialog {
         new DialogoPersonalizado(padre, TipoDialogo.EXITO, "¡Éxito!", mensaje);
     }
 
+    /** Igual que {@link #mostrarExito(JFrame, String)}, pero ejecuta {@code alCerrar} cuando el diálogo termina de cerrarse. */
+    public static void mostrarExito(JFrame padre, String mensaje, Runnable alCerrar) {
+        DialogoPersonalizado dialogo = new DialogoPersonalizado(padre, TipoDialogo.EXITO, "¡Éxito!", mensaje);
+        dialogo.establecerListenerCierre(alCerrar);
+    }
+
     public static void mostrarError(JFrame padre, String mensaje) {
         new DialogoPersonalizado(padre, TipoDialogo.ERROR, "Error", mensaje);
     }

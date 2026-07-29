@@ -20,8 +20,9 @@ public class ServicioUsuario {
         return usuarioDAO.obtenerUsuario(email);
     }
 
-    public boolean actualizarDatosPersonales(String email, String nombre, String apellido) throws SQLException {
-        return usuarioDAO.modificarDatosPersonales(email, nombre, apellido);
+    public boolean actualizarDatosPersonales(int id, String email, String nombre, String apellido,
+                                              long dni, String telefono) throws SQLException {
+        return usuarioDAO.modificarDatosPersonales(id, email, nombre, apellido, dni, telefono);
     }
 
     /** Verifica la contraseña actual antes de actualizar. @return false si la contraseña actual es incorrecta */

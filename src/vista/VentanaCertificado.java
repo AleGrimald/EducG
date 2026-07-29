@@ -1,6 +1,8 @@
 package vista;
 
 import modelo.Curso;
+import vista.componentes.IconoCurso;
+import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -83,10 +85,20 @@ public class VentanaCertificado extends VentanaBase {
         completoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
         completoLbl.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel cursoLbl = new JLabel(curso.getEmoji() + " " + curso.getTitulo());
+        JPanel filaCurso = new JPanel();
+        filaCurso.setOpaque(false);
+        filaCurso.setLayout(new BoxLayout(filaCurso, BoxLayout.X_AXIS));
+        filaCurso.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel iconoCursoLbl = IconoCurso.crearEtiqueta(curso, 28);
+
+        JLabel cursoLbl = new JLabel(curso.getTitulo());
         cursoLbl.setFont(new Font("Segoe UI", Font.BOLD, 22));
         cursoLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
-        cursoLbl.setAlignmentX(CENTER_ALIGNMENT);
+
+        filaCurso.add(iconoCursoLbl);
+        filaCurso.add(Box.createHorizontalStrut(8));
+        filaCurso.add(cursoLbl);
 
         String fecha = LocalDate.now().format(
             DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", new Locale("es", "ES")));
@@ -105,11 +117,11 @@ public class VentanaCertificado extends VentanaBase {
         centro.add(Box.createVerticalStrut(8));
         centro.add(completoLbl);
         centro.add(Box.createVerticalStrut(6));
-        centro.add(cursoLbl);
+        centro.add(filaCurso);
         centro.add(Box.createVerticalStrut(30));
         centro.add(fechaLbl);
 
-        JButton botonCerrar = FabricaUI.crearBotonSecundario("Cerrar");
+        JButton botonCerrar = FabricaUI.crearBotonSecundario("Cerrar", IconoVectorial.Tipo.CANCELAR);
         botonCerrar.addActionListener(e -> dispose());
 
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));

@@ -21,8 +21,7 @@ public class ResultadoTestDAOJdbc implements ResultadoTestDAO {
             try (ResultSet rs = cs.executeQuery()) {
                 while (rs.next())
                     resultados.add(new ResultadoTest(
-                        rs.getString("curso_titulo"), rs.getString("test_nombre"),
-                        rs.getInt("puntaje"), rs.getString("fecha")
+                        rs.getString("titulo"), rs.getInt("puntaje"), rs.getString("fecha")
                     ));
             }
         }
@@ -38,7 +37,7 @@ public class ResultadoTestDAOJdbc implements ResultadoTestDAO {
             try (ResultSet rs = cs.executeQuery()) {
                 if (rs.next()) {
                     return new EstadisticasUsuario(
-                        rs.getInt("cursos_inscriptos"),
+                        rs.getInt("cursos_completados"),
                         rs.getInt("tests_realizados"),
                         rs.getInt("promedio_puntaje")
                     );
@@ -49,39 +48,39 @@ public class ResultadoTestDAOJdbc implements ResultadoTestDAO {
     }
 
     @Override
-    public int registrarResultadoTest(String email, String cursoTitulo, String testNombre, int puntaje) throws SQLException {
-        final String sql = "{call sp_alta_resultado_test(?, ?, ?, ?, ?)}";
+    public int registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException {
+        final String sql = "{call sp_alta_resultado_test(?, ?, ?, ?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setString(1, email);
-            cs.setString(2, cursoTitulo);
-            cs.setString(3, testNombre);
-            cs.setInt(4, puntaje);
-            cs.registerOutParameter(5, Types.INTEGER);
+            cs.setInt(2, cursoId);
+            cs.setInt(3, puntaje);
+            cs.registerOutParameter(4, Types.INTEGER);
             cs.execute();
-            return cs.getInt(5);
+            return cs.getInt(4);
         }
     }
 
     @Override
     public void registrarRespuesta(int testResultadoId, int preguntaId, int opcionElegidaId) throws SQLException {
-        final String sql = "{call sp_alta_respuesta_test(?, ?, ?)}";
+        final String sql = "{call sp_alta_respuesta_test(?, ?, ?, ?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setInt(1, testResultadoId);
             cs.setInt(2, preguntaId);
             cs.setInt(3, opcionElegidaId);
+            cs.registerOutParameter(4, Types.TINYINT);
             cs.execute();
         }
     }
 
     @Override
-    public int obtenerMejorPuntaje(String email, String cursoTitulo) throws SQLException {
+    public int obtenerMejorPuntaje(String email, int cursoId) throws SQLException {
         final String sql = "{call sp_obtener_mejor_puntaje_curso(?, ?, ?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setString(1, email);
-            cs.setString(2, cursoTitulo);
+            cs.setInt(2, cursoId);
             cs.registerOutParameter(3, Types.INTEGER);
             cs.execute();
             return cs.getInt(3);

@@ -16,27 +16,27 @@ public class ServicioInscripcion {
     }
 
     /** @return true si la inscripción fue nueva o reactivada; false si ya estaba activa */
-    public boolean inscribirCurso(String email, String cursoTitulo) throws SQLException {
-        return inscripcionDAO.altaInscripcion(email, cursoTitulo) == 1;
+    public boolean inscribirCurso(String email, int cursoId) throws SQLException {
+        return inscripcionDAO.altaInscripcion(email, cursoId) == 1;
     }
 
-    public boolean estaInscripto(String email, String cursoTitulo) throws SQLException {
-        return inscripcionDAO.estaInscripto(email, cursoTitulo);
+    public boolean estaInscripto(String email, int cursoId) throws SQLException {
+        return inscripcionDAO.estaInscripto(email, cursoId);
     }
 
-    public void darDeBajaCurso(String email, String cursoTitulo) throws SQLException {
-        inscripcionDAO.bajaInscripcion(email, cursoTitulo);
+    public void darDeBajaCurso(String email, int cursoId) throws SQLException {
+        inscripcionDAO.bajaInscripcion(email, cursoId);
     }
 
     public List<Inscripcion> obtenerCursosInscriptos(String email) throws SQLException {
         return inscripcionDAO.listarPorUsuario(email);
     }
 
-    public int obtenerProgreso(String email, String cursoTitulo) throws SQLException {
-        return inscripcionDAO.obtenerProgreso(email, cursoTitulo);
+    public int obtenerProgreso(String email, int cursoId) throws SQLException {
+        return inscripcionDAO.obtenerProgreso(email, cursoId);
     }
 
-    public void actualizarProgreso(String email, String cursoTitulo, int leccionActual) throws SQLException {
-        inscripcionDAO.actualizarProgreso(email, cursoTitulo, leccionActual);
+    public void actualizarProgreso(String email, int cursoId, int leccionActual) throws SQLException {
+        inscripcionDAO.actualizarProgreso(email, cursoId, leccionActual);
     }
 }

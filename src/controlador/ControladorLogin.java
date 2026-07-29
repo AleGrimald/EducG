@@ -21,4 +21,9 @@ public class ControladorLogin {
 
         return servicioAuth.iniciarSesion(email, password);
     }
+
+    /** @return true si la cuenta es de administrador, para decidir a qué ventana ir tras un login exitoso */
+    public boolean esAdmin(String email) throws SQLException {
+        return servicioAuth.esAdmin(email);
+    }
 }

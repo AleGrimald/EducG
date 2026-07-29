@@ -3,6 +3,7 @@ package vista;
 import controlador.ControladorRegistro;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.FiltroCaracteres;
+import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -181,7 +182,7 @@ public class VentanaRegistro extends VentanaBase {
         sep.setForeground(EstiloUI.BORDE);
         agregarFilaTarjeta(tarjeta, sep, gbcTarjeta, 2, new Insets(0, 0, 14, 0));
 
-        JButton botonVolver = FabricaUI.crearBotonSecundario("← Volver al login");
+        JButton botonVolver = FabricaUI.crearBotonSecundario("Volver al login", IconoVectorial.Tipo.VOLVER);
         botonVolver.addActionListener(e -> volverAlLogin());
         agregarFilaTarjeta(tarjeta, botonVolver, gbcTarjeta, 3, new Insets(5, 0, 10, 0));
 
@@ -215,7 +216,7 @@ public class VentanaRegistro extends VentanaBase {
         FiltroCaracteres.aplicarA(campoDni, "[0-9]");
         agregarFilaTarjeta(paso, campoDni, gbc, 5, new Insets(0, 0, 20, 0));
 
-        botonSiguiente = FabricaUI.crearBotonPrimario("Siguiente");
+        botonSiguiente = FabricaUI.crearBotonPrimario("Siguiente", IconoVectorial.Tipo.SIGUIENTE);
         botonSiguiente.addActionListener(e -> manejarSiguiente());
         agregarFilaTarjeta(paso, botonSiguiente, gbc, 6, new Insets(10, 0, 0, 0));
 
@@ -257,7 +258,7 @@ public class VentanaRegistro extends VentanaBase {
         checkMostrarPassword.addActionListener(e -> alternarVisibilidadPassword());
         agregarFilaTarjeta(paso, checkMostrarPassword, gbc, 8, new Insets(0, 0, 20, 0));
 
-        botonRegistrar = FabricaUI.crearBotonPrimario("Crear cuenta");
+        botonRegistrar = FabricaUI.crearBotonPrimario("Crear cuenta", IconoVectorial.Tipo.GUARDAR);
         botonRegistrar.addActionListener(e -> manejarRegistro());
         agregarFilaTarjeta(paso, botonRegistrar, gbc, 9, new Insets(0, 0, 0, 0));
 

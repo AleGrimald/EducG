@@ -32,12 +32,19 @@ public class ControladorPanelUsuario {
         return servicioUsuario.obtenerDatos(email);
     }
 
-    public void actualizarDatosPersonales(String email, String nombre, String apellido) throws SQLException {
+    public void actualizarDatosPersonales(int id, String email, String nombre, String apellido,
+                                           String dni, String telefono) throws SQLException {
         if (!Validador.esNombreValido(nombre))
             throw new IllegalArgumentException("El nombre debe tener entre 2 y 100 caracteres.");
         if (!Validador.esNombreValido(apellido))
             throw new IllegalArgumentException("El apellido debe tener entre 2 y 100 caracteres.");
-        servicioUsuario.actualizarDatosPersonales(email, nombre, apellido);
+        if (!Validador.esEmailValido(email))
+            throw new IllegalArgumentException("Ingresá un correo electrónico válido.\nEjemplo: usuario@dominio.com");
+        if (!Validador.esDniValido(dni))
+            throw new IllegalArgumentException("El DNI debe tener entre 7 y 9 dígitos, sin puntos ni espacios.");
+        if (!Validador.esTelefonoValido(telefono))
+            throw new IllegalArgumentException("Ingresá un teléfono válido (6 a 20 dígitos).");
+        servicioUsuario.actualizarDatosPersonales(id, email, nombre, apellido, Long.parseLong(dni), telefono);
     }
 
     /** @return false si la contraseña actual es incorrecta */
@@ -57,8 +64,8 @@ public class ControladorPanelUsuario {
         return servicioInscripcion.obtenerCursosInscriptos(email);
     }
 
-    public void darDeBajaCurso(String email, String cursoTitulo) throws SQLException {
-        servicioInscripcion.darDeBajaCurso(email, cursoTitulo);
+    public void darDeBajaCurso(String email, int cursoId) throws SQLException {
+        servicioInscripcion.darDeBajaCurso(email, cursoId);
     }
 
     /** @return el curso del catálogo con ese título, o null si no está disponible */

@@ -15,11 +15,11 @@ public class ConexionBD {
 
     static {
         java.util.Properties env = loadEnv();
-        HOST     = env.getProperty("DB_HOST", "localhost");
-        PORT     = Integer.parseInt(env.getProperty("DB_PORT", "3306"));
-        DATABASE = env.getProperty("DB_DATABASE", "educg_db");
-        USER     = env.getProperty("DB_USER", "root");
-        PASSWORD = env.getProperty("DB_PASSWORD", "star1989");
+        HOST     = env.getProperty("DB_HOST", "");
+        PORT     = Integer.parseInt(env.getProperty("DB_PORT", ""));
+        DATABASE = env.getProperty("DB_DATABASE", "");
+        USER     = env.getProperty("DB_USER", "");
+        PASSWORD = env.getProperty("DB_PASSWORD", "");
     }
 
     private static java.util.Properties loadEnv() {

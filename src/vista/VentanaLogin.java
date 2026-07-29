@@ -2,6 +2,7 @@ package vista;
 
 import controlador.ControladorLogin;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -147,7 +148,7 @@ public class VentanaLogin extends VentanaBase {
         checkMostrarPassword.addActionListener(e -> alternarVisibilidadPassword());
         agregarFilaTarjeta(tarjeta, checkMostrarPassword, gbcTarjeta, 5, new Insets(0, 0, 28, 0));
 
-        JButton botonLogin = FabricaUI.crearBotonPrimario("Iniciar Sesión");
+        JButton botonLogin = FabricaUI.crearBotonPrimario("Iniciar Sesión", IconoVectorial.Tipo.USUARIO);
         botonLogin.addActionListener(e -> manejarLogin());
         agregarFilaTarjeta(tarjeta, botonLogin, gbcTarjeta, 6, new Insets(0, 0, 16, 0));
 
@@ -161,7 +162,7 @@ public class VentanaLogin extends VentanaBase {
         sinCuentaLbl.setHorizontalAlignment(SwingConstants.CENTER);
         agregarFilaTarjeta(tarjeta, sinCuentaLbl, gbcTarjeta, 8, new Insets(0, 0, 12, 0));
 
-        JButton botonRegistro = FabricaUI.crearBotonSecundario("Crear Nueva Cuenta");
+        JButton botonRegistro = FabricaUI.crearBotonSecundario("Crear Nueva Cuenta", IconoVectorial.Tipo.AGREGAR);
         botonRegistro.addActionListener(e -> abrirRegistro());
         agregarFilaTarjeta(tarjeta, botonRegistro, gbcTarjeta, 9, new Insets(0, 0, 0, 0));
 
@@ -190,7 +191,11 @@ public class VentanaLogin extends VentanaBase {
             if (controlador.iniciarSesion(email, password)) {
                 if (!iniciarTransicionUnica()) return;
                 dispose();
-                new VentanaCursos(email).setVisible(true);
+                if (controlador.esAdmin(email)) {
+                    new vista.admin.VentanaAdmin(email).setVisible(true);
+                } else {
+                    new VentanaCursos(email).setVisible(true);
+                }
             } else {
                 mostrarError("Correo electrónico o contraseña incorrectos.");
             }

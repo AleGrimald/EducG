@@ -13,11 +13,11 @@ public interface ResultadoTestDAO {
 
     EstadisticasUsuario obtenerEstadisticas(String email) throws SQLException;
 
-    /** @return el id del resultado creado, o -1 si el usuario/curso no existe */
-    int registrarResultadoTest(String email, String cursoTitulo, String testNombre, int puntaje) throws SQLException;
+    /** @return el id del resultado creado */
+    int registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException;
 
     void registrarRespuesta(int testResultadoId, int preguntaId, int opcionElegidaId) throws SQLException;
 
     /** @return el mejor puntaje del usuario en ese curso, o -1 si nunca lo rindió */
-    int obtenerMejorPuntaje(String email, String cursoTitulo) throws SQLException;
+    int obtenerMejorPuntaje(String email, int cursoId) throws SQLException;
 }

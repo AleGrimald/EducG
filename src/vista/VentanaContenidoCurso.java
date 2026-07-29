@@ -4,7 +4,7 @@ import controlador.ControladorCursos;
 import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.Leccion;
-import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -12,8 +12,16 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-/** Muestra el contenido de un curso (lecciones paginadas) al que el usuario ya está inscripto. */
+/**
+ * Muestra el contenido de un curso al que el usuario ya está inscripto: alterna clases y,
+ * cuando una clase tiene ejercicio propuesto, un paso de ejercicio antes de poder avanzar a la
+ * siguiente clase (el botón "Siguiente" queda deshabilitado hasta resolverlo correctamente).
+ */
 public class VentanaContenidoCurso extends VentanaBase {
 
     private final ControladorCursos controladorCursos = new ControladorCursos();
@@ -22,7 +30,10 @@ public class VentanaContenidoCurso extends VentanaBase {
     private final String emailUsuario;
     private final String nombreUsuario;
     private final Runnable alVolver;
-    private int leccionIndexActual = 0;
+
+    private final List<Paso> pasos;
+    private final Set<Integer> ejerciciosResueltos = new HashSet<>();
+    private int pasoActual = 0;
     private JPanel panelContenido;
 
     public VentanaContenidoCurso(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
@@ -31,17 +42,48 @@ public class VentanaContenidoCurso extends VentanaBase {
         this.emailUsuario = emailUsuario;
         this.nombreUsuario = nombreUsuario;
         this.alVolver = alVolver;
+        this.pasos = construirPasos();
         cargarProgreso();
         construirUI();
         activarBurbujaChatbot(emailUsuario, curso.getTitulo());
     }
 
+    /** Un paso del circuito: la clase en sí, o (si la clase tiene ejercicio propuesto) su ejercicio, justo después. */
+    private static class Paso {
+        final int leccionIndex;
+        final boolean esEjercicio;
+        Paso(int leccionIndex, boolean esEjercicio) {
+            this.leccionIndex = leccionIndex;
+            this.esEjercicio = esEjercicio;
+        }
+    }
+
+    private List<Paso> construirPasos() {
+        List<Paso> resultado = new ArrayList<>();
+        List<Leccion> lecciones = curso.getLecciones();
+        for (int i = 0; i < lecciones.size(); i++) {
+            resultado.add(new Paso(i, false));
+            if (lecciones.get(i).tieneEjercicio()) resultado.add(new Paso(i, true));
+        }
+        return resultado;
+    }
+
     private void cargarProgreso() {
+        int leccionGuardada;
         try {
-            leccionIndexActual = controladorCursos.obtenerProgreso(emailUsuario, curso.getTitulo());
-            leccionIndexActual = Math.max(0, Math.min(leccionIndexActual, curso.getLecciones().size() - 1));
+            leccionGuardada = controladorCursos.obtenerProgreso(emailUsuario, curso.getId());
         } catch (Exception ignored) {
-            leccionIndexActual = 0;
+            leccionGuardada = 0;
+        }
+        leccionGuardada = Math.max(0, Math.min(leccionGuardada, curso.getLecciones().size() - 1));
+
+        // Reanuda siempre en la clase (nunca a mitad de un ejercicio de una sesión anterior).
+        pasoActual = 0;
+        for (int i = 0; i < pasos.size(); i++) {
+            if (!pasos.get(i).esEjercicio && pasos.get(i).leccionIndex == leccionGuardada) {
+                pasoActual = i;
+                break;
+            }
         }
     }
 
@@ -77,7 +119,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(duracionLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("← Volver");
+        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver", IconoVectorial.Tipo.VOLVER);
         botonVolver.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
             dispose();
@@ -96,33 +138,19 @@ public class VentanaContenidoCurso extends VentanaBase {
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
-        contenido.setBorder(new EmptyBorder(20, 32, 20, 32));
 
         contenido.add(construirBarraEvaluacion());
         contenido.add(Box.createVerticalStrut(24));
 
-        int total = curso.getLecciones().size();
-        JLabel numeroLbl = new JLabel("Lección " + (leccionIndexActual + 1) + " de " + total);
-        numeroLbl.setFont(EstiloUI.FUENTE_PEQUENA);
-        numeroLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
-        numeroLbl.setAlignmentX(LEFT_ALIGNMENT);
-        contenido.add(numeroLbl);
-        contenido.add(Box.createVerticalStrut(8));
+        Paso paso = pasos.get(pasoActual);
+        Leccion leccion = curso.getLecciones().get(paso.leccionIndex);
 
-        Leccion leccionActual = curso.getLecciones().get(leccionIndexActual);
-        JLabel tituloLeccion = new JLabel(leccionActual.getTitulo());
-        tituloLeccion.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        tituloLeccion.setForeground(EstiloUI.TEXTO_PRIMARIO);
-        tituloLeccion.setAlignmentX(LEFT_ALIGNMENT);
-        contenido.add(tituloLeccion);
-        contenido.add(Box.createVerticalStrut(14));
-
-        JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + leccionActual.getContenido() + "</body></html>");
-        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
-        contenidoLbl.setAlignmentX(LEFT_ALIGNMENT);
-        contenido.add(contenidoLbl);
-        contenido.add(Box.createVerticalGlue());
+        if (paso.esEjercicio) {
+            contenido.add(construirCuerpoEjercicio(paso, leccion));
+        } else {
+            contenido.add(construirCuerpoLeccion(paso, leccion));
+        }
+        contenido.add(Box.createVerticalStrut(24));
 
         contenido.add(construirFilaBotones());
 
@@ -130,8 +158,149 @@ public class VentanaContenidoCurso extends VentanaBase {
 
         JScrollPane scroll = new JScrollPane(contenedorCentral);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setViewportBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;
+    }
+
+    private JPanel construirCuerpoLeccion(Paso paso, Leccion leccion) {
+        JPanel bloque = new JPanel();
+        bloque.setOpaque(false);
+        bloque.setLayout(new BoxLayout(bloque, BoxLayout.Y_AXIS));
+
+        int total = curso.getLecciones().size();
+        JLabel numeroLbl = new JLabel("Lección " + (paso.leccionIndex + 1) + " de " + total);
+        numeroLbl.setFont(EstiloUI.FUENTE_PEQUENA);
+        numeroLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        numeroLbl.setAlignmentX(LEFT_ALIGNMENT);
+        bloque.add(numeroLbl);
+        bloque.add(Box.createVerticalStrut(8));
+
+        JLabel tituloLeccion = new JLabel(leccion.getTitulo());
+        tituloLeccion.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        tituloLeccion.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        tituloLeccion.setAlignmentX(LEFT_ALIGNMENT);
+        bloque.add(tituloLeccion);
+        bloque.add(Box.createVerticalStrut(14));
+
+        bloque.add(construirCajaTexto(leccion.getContenido()));
+        return bloque;
+    }
+
+    private JPanel construirCuerpoEjercicio(Paso paso, Leccion leccion) {
+        JPanel bloque = new JPanel();
+        bloque.setOpaque(false);
+        bloque.setLayout(new BoxLayout(bloque, BoxLayout.Y_AXIS));
+
+        int total = curso.getLecciones().size();
+        JLabel numeroLbl = new JLabel("Ejercicio propuesto — Clase " + (paso.leccionIndex + 1) + " de " + total);
+        numeroLbl.setFont(EstiloUI.FUENTE_PEQUENA);
+        numeroLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        numeroLbl.setAlignmentX(LEFT_ALIGNMENT);
+        bloque.add(numeroLbl);
+        bloque.add(Box.createVerticalStrut(8));
+
+        JLabel tituloEjercicio = new JLabel("✏️  Ejercicio: " + leccion.getTitulo());
+        tituloEjercicio.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        tituloEjercicio.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        tituloEjercicio.setAlignmentX(LEFT_ALIGNMENT);
+        bloque.add(tituloEjercicio);
+        bloque.add(Box.createVerticalStrut(14));
+
+        bloque.add(construirCajaTexto(leccion.getEjercicioPropuesto()));
+        bloque.add(Box.createVerticalStrut(20));
+
+        boolean resuelto = ejerciciosResueltos.contains(paso.leccionIndex);
+        if (resuelto) {
+            JLabel resueltoLbl = new JLabel("✓  ¡Resuelto correctamente! Ya podés avanzar a la siguiente clase.");
+            resueltoLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            resueltoLbl.setForeground(EstiloUI.EXITO);
+            resueltoLbl.setAlignmentX(LEFT_ALIGNMENT);
+            bloque.add(resueltoLbl);
+        } else {
+            bloque.add(construirFormularioRespuesta(paso, leccion));
+        }
+
+        return bloque;
+    }
+
+    private JPanel construirFormularioRespuesta(Paso paso, Leccion leccion) {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel etiqueta = FabricaUI.crearEtiqueta("Tu respuesta");
+        etiqueta.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(etiqueta);
+        panel.add(Box.createVerticalStrut(6));
+
+        JPanel filaRespuesta = new JPanel(new BorderLayout(10, 0));
+        filaRespuesta.setOpaque(false);
+        filaRespuesta.setAlignmentX(LEFT_ALIGNMENT);
+        filaRespuesta.setMaximumSize(new Dimension(600, EstiloUI.ALTO_CAMPO));
+
+        JTextField campoRespuesta = FabricaUI.crearCampo();
+        JButton botonVerificar = FabricaUI.crearBotonPrimario("Verificar", IconoVectorial.Tipo.GUARDAR);
+
+        filaRespuesta.add(campoRespuesta, BorderLayout.CENTER);
+        filaRespuesta.add(botonVerificar, BorderLayout.EAST);
+        panel.add(filaRespuesta);
+
+        panel.add(Box.createVerticalStrut(8));
+        JLabel feedbackLbl = new JLabel(" ");
+        feedbackLbl.setFont(EstiloUI.FUENTE_PEQUENA);
+        feedbackLbl.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(feedbackLbl);
+
+        Runnable verificar = () -> {
+            boolean correcta = controladorCursos.verificarRespuestaEjercicio(
+                campoRespuesta.getText(), leccion.getRespuestaEsperada());
+            if (correcta) {
+                ejerciciosResueltos.add(paso.leccionIndex);
+                reconstruirContenido();
+            } else {
+                feedbackLbl.setText("✕  Respuesta incorrecta. Volvé a intentarlo.");
+                feedbackLbl.setForeground(EstiloUI.ERROR);
+            }
+        };
+        botonVerificar.addActionListener(e -> verificar.run());
+        campoRespuesta.addActionListener(e -> verificar.run());
+
+        return panel;
+    }
+
+    private JScrollPane construirCajaTexto(String textoHtml) {
+        JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + textoHtml + "</body></html>");
+        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        contenidoLbl.setVerticalAlignment(SwingConstants.TOP);
+
+        JPanel envoltorioTexto = new JPanel(new BorderLayout());
+        envoltorioTexto.setOpaque(false);
+        envoltorioTexto.add(contenidoLbl, BorderLayout.NORTH);
+
+        // Caja de tamaño fijo (60% del alto de pantalla): el texto scrollea adentro
+        // en vez de cambiar el alto de la caja, así los botones no se mueven según la lección.
+        JScrollPane cajaTexto = new JScrollPane(
+                envoltorioTexto,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        );
+        cajaTexto.setBorder(BorderFactory.createEmptyBorder());
+        cajaTexto.setViewportBorder(BorderFactory.createEmptyBorder());
+        cajaTexto.getVerticalScrollBar().setUnitIncrement(16);
+        cajaTexto.setOpaque(false);
+        cajaTexto.getViewport().setOpaque(false);
+        cajaTexto.setAlignmentX(LEFT_ALIGNMENT);
+
+        int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.4);
+        Dimension tamanoCaja = new Dimension(748, alturaCaja);
+        cajaTexto.setPreferredSize(tamanoCaja);
+        cajaTexto.setMinimumSize(tamanoCaja);
+        cajaTexto.setMaximumSize(tamanoCaja);
+
+        return cajaTexto;
     }
 
     private JPanel construirFilaBotones() {
@@ -139,25 +308,27 @@ public class VentanaContenidoCurso extends VentanaBase {
         fila.setOpaque(false);
         fila.setAlignmentX(LEFT_ALIGNMENT);
 
-        int total = curso.getLecciones().size();
-        boolean esUltima = leccionIndexActual == total - 1;
-        boolean esPrimera = leccionIndexActual == 0;
+        Paso paso = pasos.get(pasoActual);
+        boolean esUltimoPaso = pasoActual == pasos.size() - 1;
+        boolean esPrimero = pasoActual == 0;
+        boolean bloqueadoPorEjercicio = paso.esEjercicio && !ejerciciosResueltos.contains(paso.leccionIndex);
 
-        JButton botonAnterior = FabricaUI.crearBotonSecundario("← Anterior");
-        botonAnterior.setEnabled(!esPrimera);
+        JButton botonAnterior = FabricaUI.crearBotonSecundario("Anterior", IconoVectorial.Tipo.ANTERIOR);
+        botonAnterior.setEnabled(!esPrimero);
         botonAnterior.addActionListener(e -> {
-            leccionIndexActual = Math.max(0, leccionIndexActual - 1);
+            pasoActual = Math.max(0, pasoActual - 1);
             guardarProgreso();
             reconstruirContenido();
         });
         fila.add(botonAnterior);
 
-        JButton botonSiguiente = FabricaUI.crearBotonPrimario(esUltima ? "Hacer Test" : "Siguiente →");
+        JButton botonSiguiente = FabricaUI.crearBotonPrimarioIconoAlFinal(esUltimoPaso ? "Hacer Test" : "Siguiente", IconoVectorial.Tipo.SIGUIENTE);
+        botonSiguiente.setEnabled(!bloqueadoPorEjercicio);
         botonSiguiente.addActionListener(e -> {
-            if (esUltima) {
+            if (esUltimoPaso) {
                 abrirTest();
             } else {
-                leccionIndexActual = Math.min(total - 1, leccionIndexActual + 1);
+                pasoActual = Math.min(pasos.size() - 1, pasoActual + 1);
                 guardarProgreso();
                 reconstruirContenido();
             }
@@ -169,7 +340,7 @@ public class VentanaContenidoCurso extends VentanaBase {
 
     private void guardarProgreso() {
         try {
-            controladorCursos.actualizarProgreso(emailUsuario, curso.getTitulo(), leccionIndexActual);
+            controladorCursos.actualizarProgreso(emailUsuario, curso.getId(), pasos.get(pasoActual).leccionIndex);
         } catch (Exception ignored) {}
     }
 
@@ -184,7 +355,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private JPanel construirBarraEvaluacion() {
         int puntajeObtenido = -1;
         try {
-            puntajeObtenido = controladorTest.obtenerMejorPuntaje(emailUsuario, curso.getTitulo());
+            puntajeObtenido = controladorTest.obtenerMejorPuntaje(emailUsuario, curso.getId());
         } catch (Exception ignored) {}
         final int mejorPuntaje = puntajeObtenido;
         boolean aprobado = mejorPuntaje >= ControladorTest.puntajeAprobacion();

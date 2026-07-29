@@ -4,6 +4,7 @@ import controlador.ControladorCursos;
 import modelo.Curso;
 import modelo.Usuario;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoVectorial;
 import vista.componentes.TarjetaCurso;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -54,14 +55,14 @@ public class VentanaCursos extends VentanaBase {
         bloqueTitulo.add(Box.createVerticalStrut(2));
         bloqueTitulo.add(bienvenidaLbl);
 
-        JButton botonPanel = FabricaUI.crearBotonSecundarioPequeno("Mi Panel");
+        JButton botonPanel = FabricaUI.crearBotonSecundarioPequeno("Mi Perfil", IconoVectorial.Tipo.USUARIO);
         botonPanel.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
             dispose();
             new VentanaPanelUsuario(emailUsuario).setVisible(true);
         });
 
-        JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión");
+        JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
             dispose();
@@ -98,7 +99,7 @@ public class VentanaCursos extends VentanaBase {
             for (Curso curso : cursos) {
                 boolean yaInscripto = false;
                 try {
-                    yaInscripto = controlador.estaInscripto(emailUsuario, curso.getTitulo());
+                    yaInscripto = controlador.estaInscripto(emailUsuario, curso.getId());
                 } catch (Exception ignored) {}
 
                 TarjetaCurso tarjeta = new TarjetaCurso(curso, yaInscripto);
@@ -116,15 +117,18 @@ public class VentanaCursos extends VentanaBase {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setViewportBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
 
         raiz.add(seccionSuperior, BorderLayout.NORTH);
         raiz.add(scroll, BorderLayout.CENTER);
+
+        SwingUtilities.invokeLater(() -> scroll.getViewport().setViewPosition(new Point(0, 0)));
     }
 
     private void manejarInscripcion(Curso curso, TarjetaCurso tarjeta) {
         try {
-            boolean inscripto = controlador.inscribirCurso(emailUsuario, curso.getTitulo());
+            boolean inscripto = controlador.inscribirCurso(emailUsuario, curso.getId());
             tarjeta.marcarInscripto();
             if (inscripto) {
                 DialogoPersonalizado.mostrarExito(this,

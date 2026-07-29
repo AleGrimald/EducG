@@ -6,6 +6,7 @@ import modelo.OpcionTest;
 import modelo.PreguntaTest;
 import vista.componentes.BarraProgreso;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -47,7 +48,7 @@ public class VentanaTest extends VentanaBase {
 
     private void cargarPreguntas() {
         try {
-            preguntas = controlador.obtenerPreguntas(curso.getTitulo());
+            preguntas = controlador.obtenerPreguntas(curso.getId());
         } catch (SQLException ex) {
             preguntas = new ArrayList<>();
             errorCarga = ex.getMessage();
@@ -90,7 +91,7 @@ public class VentanaTest extends VentanaBase {
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(textoPreguntaLbl);
 
-        botonVolverEncabezado = FabricaUI.crearBotonSecundarioPequeno("← Cancelar");
+        botonVolverEncabezado = FabricaUI.crearBotonSecundarioPequeno("Cancelar", IconoVectorial.Tipo.VOLVER);
         botonVolverEncabezado.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
             dispose();
@@ -149,7 +150,7 @@ public class VentanaTest extends VentanaBase {
         boolean esUltima = preguntaIndexActual == total - 1;
         boolean esPrimera = preguntaIndexActual == 0;
 
-        JButton botonAnterior = FabricaUI.crearBotonSecundario("← Anterior");
+        JButton botonAnterior = FabricaUI.crearBotonSecundario("Anterior", IconoVectorial.Tipo.ANTERIOR);
         botonAnterior.setEnabled(!esPrimera);
         botonAnterior.addActionListener(e -> {
             preguntaIndexActual = Math.max(0, preguntaIndexActual - 1);
@@ -157,7 +158,7 @@ public class VentanaTest extends VentanaBase {
         });
         fila.add(botonAnterior);
 
-        JButton botonSiguiente = FabricaUI.crearBotonPrimario(esUltima ? "Finalizar Test" : "Siguiente →");
+        JButton botonSiguiente = FabricaUI.crearBotonPrimarioIconoAlFinal(esUltima ? "Finalizar Test" : "Siguiente", IconoVectorial.Tipo.SIGUIENTE);
         botonSiguiente.addActionListener(e -> {
             if (esUltima) {
                 manejarFinalizar();
@@ -232,7 +233,7 @@ public class VentanaTest extends VentanaBase {
         }
 
         try {
-            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getTitulo(), preguntas, respuestasSeleccionadas);
+            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getId(), preguntas, respuestasSeleccionadas);
             boolean aprobado = puntaje >= ControladorTest.puntajeAprobacion();
             mostrarResultados(puntaje, aprobado);
         } catch (SQLException ex) {
@@ -246,7 +247,7 @@ public class VentanaTest extends VentanaBase {
             ? "¡Aprobaste con " + puntaje + " / 100!"
             : "No aprobaste  ·  " + puntaje + " / 100");
         barraProgreso.setProgreso(preguntas.size(), preguntas.size());
-        botonVolverEncabezado.setText("← Volver");
+        botonVolverEncabezado.setText("Volver");
 
         panelPreguntas.removeAll();
         panelPreguntas.add(construirResultados(puntaje, aprobado), BorderLayout.CENTER);
@@ -271,7 +272,7 @@ public class VentanaTest extends VentanaBase {
             contenido.add(Box.createVerticalStrut(12));
         }
 
-        JButton botonVolver = FabricaUI.crearBotonPrimario("Volver al curso");
+        JButton botonVolver = FabricaUI.crearBotonPrimario("Volver al curso", IconoVectorial.Tipo.VOLVER);
         botonVolver.setAlignmentX(LEFT_ALIGNMENT);
         botonVolver.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
