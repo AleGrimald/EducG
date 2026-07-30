@@ -19,10 +19,11 @@ public class VentanaPanelUsuario extends VentanaBase {
     private final String emailUsuario;
 
     public VentanaPanelUsuario(String emailUsuario) {
-        super("Educ G – Mi Panel", EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.emailUsuario = emailUsuario;
         construirUI();
         activarBurbujaChatbot(emailUsuario);
+        FabricaUI.establecerIconoVentana(this);
     }
 
     private void construirUI() {
@@ -30,52 +31,27 @@ public class VentanaPanelUsuario extends VentanaBase {
         raiz.setLayout(new BorderLayout());
         setContentPane(raiz);
 
+        String nombreUsuario = resolverNombreUsuario();
+        setTitle("Educ G – " + nombreUsuario);
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
-        JPanel grilla = new JPanel(new GridLayout(1, 3, 24, 24));
-        grilla.setOpaque(false);
-        grilla.setBorder(new EmptyBorder(40, 60, 60, 60));
-
-        grilla.add(construirTarjetaModulo("👤", "Mis Datos", "Datos personales y cambio de contraseña.",
-            () -> abrir(new VentanaMisDatos(emailUsuario))));
-        grilla.add(construirTarjetaModulo("📚", "Mis Cursos", "Los cursos en los que estás inscripto.",
-            () -> abrir(new VentanaMisCursos(emailUsuario))));
-        grilla.add(construirTarjetaModulo("📊", "Estadísticas", "Tu progreso e historial de tests.",
-            () -> abrir(new VentanaMisEstadisticas(emailUsuario))));
-
-        JPanel wrapper = new JPanel(new GridBagLayout());
-        wrapper.setOpaque(false);
-        wrapper.add(grilla);
-        raiz.add(wrapper, BorderLayout.CENTER);
+        JPanel contenidoVacio = new JPanel();
+        contenidoVacio.setOpaque(false);
+        raiz.add(contenidoVacio, BorderLayout.CENTER);
     }
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel appLbl = new JLabel("Educ G");
-        appLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        appLbl.setForeground(Color.WHITE);
-
-        JLabel paginaLbl = new JLabel("Mi Panel – " + resolverNombreUsuario());
-        paginaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        paginaLbl.setForeground(new Color(180, 210, 255));
-
+        JLabel appLbl = FabricaUI.crearLogoEducG(100);
         bloqueTitulo.add(appLbl);
-        bloqueTitulo.add(Box.createVerticalStrut(2));
-        bloqueTitulo.add(paginaLbl);
-
-        JButton botonCatalogo = FabricaUI.crearBotonSecundarioPequeno("Ver Catálogo", IconoVectorial.Tipo.LISTA);
-        botonCatalogo.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaCursos(emailUsuario).setVisible(true);
-        });
 
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
@@ -86,56 +62,71 @@ public class VentanaPanelUsuario extends VentanaBase {
 
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         panelBotones.setOpaque(false);
-        panelBotones.add(botonCatalogo);
         panelBotones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(panelBotones, BorderLayout.EAST);
+
+        // ── Pestañas de navegación ─────────────────────────────────────────
+        JPanel pestanas = crearPestanas();
+        encabezado.add(pestanas, BorderLayout.SOUTH);
+
         return encabezado;
     }
 
-    private JPanel construirTarjetaModulo(String icono, String titulo, String descripcion, Runnable alHacerClic) {
-        JPanel tarjeta = FabricaUI.crearTarjeta();
-        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
-        tarjeta.setBorder(new EmptyBorder(36, 28, 36, 28));
-        tarjeta.setPreferredSize(new Dimension(260, 260));
-        tarjeta.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    private JPanel crearPestanas() {
+        JPanel pestanas = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pestanas.setOpaque(false);
+        pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        JLabel iconoLbl = new JLabel(icono);
-        iconoLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
-        iconoLbl.setAlignmentX(CENTER_ALIGNMENT);
+        String[] labels = {"Catálogo de Cursos", "Mis Datos", "Mis Cursos", "Estadísticas"};
+        Runnable[] acciones = {
+            () -> abrirVentana(new VentanaCursos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisDatos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisCursos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisEstadisticas(emailUsuario))
+        };
 
-        JLabel tituloLbl = new JLabel(titulo);
-        tituloLbl.setFont(EstiloUI.FUENTE_SECCION);
-        tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
-        tituloLbl.setAlignmentX(CENTER_ALIGNMENT);
+        for (int i = 0; i < labels.length; i++) {
+            JLabel pestaña = crearPestaña(labels[i]);
+            final int index = i;
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    acciones[index].run();
+                }
+            });
+            pestanas.add(pestaña);
+        }
 
-        JLabel descLbl = new JLabel("<html><div style='text-align:center;width:180px'>" + descripcion + "</div></html>");
-        descLbl.setFont(EstiloUI.FUENTE_PEQUENA);
-        descLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
-        descLbl.setAlignmentX(CENTER_ALIGNMENT);
-        descLbl.setHorizontalAlignment(SwingConstants.CENTER);
+        return pestanas;
+    }
 
-        tarjeta.add(Box.createVerticalGlue());
-        tarjeta.add(iconoLbl);
-        tarjeta.add(Box.createVerticalStrut(14));
-        tarjeta.add(tituloLbl);
-        tarjeta.add(Box.createVerticalStrut(10));
-        tarjeta.add(descLbl);
-        tarjeta.add(Box.createVerticalGlue());
+    private JLabel crearPestaña(String texto) {
+        JLabel pestaña = new JLabel(texto);
+        pestaña.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pestaña.setForeground(new Color(80, 100, 130));
+        pestaña.setBorder(new EmptyBorder(6, 14, 6, 14));
+        pestaña.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pestaña.setOpaque(false);
 
-        tarjeta.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { alHacerClic.run(); }
+        pestaña.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) {
+                pestaña.setForeground(new Color(37, 99, 235));
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                pestaña.setForeground(new Color(80, 100, 130));
+            }
         });
 
-        return tarjeta;
+        return pestaña;
     }
 
-    private void abrir(VentanaBase ventana) {
-        if (!iniciarTransicionUnica()) return;
-        dispose();
+    private void abrirVentana(VentanaBase ventana) {
         ventana.setVisible(true);
     }
+
 
     private String resolverNombreUsuario() {
         try {

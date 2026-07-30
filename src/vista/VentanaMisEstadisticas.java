@@ -3,6 +3,7 @@ package vista;
 import controlador.ControladorPanelUsuario;
 import modelo.EstadisticasUsuario;
 import modelo.ResultadoTest;
+import modelo.Usuario;
 import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -10,7 +11,11 @@ import vista.estilo.FabricaUI;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,9 +26,10 @@ public class VentanaMisEstadisticas extends VentanaBase {
     private final String emailUsuario;
 
     public VentanaMisEstadisticas(String emailUsuario) {
-        super("Educ G – Estadísticas", EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.emailUsuario = emailUsuario;
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
         activarBurbujaChatbot(emailUsuario);
     }
 
@@ -31,6 +37,9 @@ public class VentanaMisEstadisticas extends VentanaBase {
         JPanel raiz = FabricaUI.crearFondoEstandar();
         raiz.setLayout(new BorderLayout());
         setContentPane(raiz);
+
+        String nombreUsuario = resolverNombreUsuario();
+        setTitle("Educ G – " + nombreUsuario);
 
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
@@ -43,24 +52,18 @@ public class VentanaMisEstadisticas extends VentanaBase {
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel appLbl = new JLabel("Educ G");
-        appLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        appLbl.setForeground(Color.WHITE);
+        JLabel appLbl = FabricaUI.crearLogoEducG(100);
 
-        JLabel subLbl = new JLabel("Mi Panel – Estadísticas");
-        subLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        subLbl.setForeground(new Color(180, 210, 255));
 
         bloqueTitulo.add(appLbl);
-        bloqueTitulo.add(Box.createVerticalStrut(2));
-        bloqueTitulo.add(subLbl);
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
         botonVolver.addActionListener(e -> {
@@ -83,6 +86,10 @@ public class VentanaMisEstadisticas extends VentanaBase {
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(botones, BorderLayout.EAST);
+
+        // ── Pestañas de navegación ─────────────────────────────────────────
+        JPanel pestanas = crearPestanas();
+        encabezado.add(pestanas, BorderLayout.SOUTH);
         return encabezado;
     }
 
@@ -205,5 +212,69 @@ public class VentanaMisEstadisticas extends VentanaBase {
         sep.setForeground(new Color(210, 220, 230));
         sep.setAlignmentX(LEFT_ALIGNMENT);
         return sep;
+    }
+
+    private JPanel crearPestanas() {
+        JPanel pestanas = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pestanas.setOpaque(false);
+        pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        String[] labels = {"Catálogo de Cursos", "Mis Datos", "Mis Cursos", "Estadísticas"};
+        Runnable[] acciones = {
+            () -> abrirVentana(new VentanaCursos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisDatos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisCursos(emailUsuario)),
+            () -> {}
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            JLabel pestaña = crearPestaña(labels[i], i == 3);
+            final int index = i;
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    if (index == 3) return;
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    acciones[index].run();
+                }
+            });
+            pestanas.add(pestaña);
+        }
+
+        return pestanas;
+    }
+
+    private JLabel crearPestaña(String texto, boolean activa) {
+        JLabel pestaña = new JLabel(texto);
+        pestaña.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pestaña.setForeground(activa ? new Color(37, 99, 235) : new Color(80, 100, 130));
+        pestaña.setBorder(new EmptyBorder(6, 14, 6, 14));
+        pestaña.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pestaña.setOpaque(false);
+
+        if (!activa) {
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) {
+                    pestaña.setForeground(new Color(37, 99, 235));
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    pestaña.setForeground(new Color(80, 100, 130));
+                }
+            });
+        }
+
+        return pestaña;
+    }
+
+    private String resolverNombreUsuario() {
+        try {
+            Usuario usuario = controlador.obtenerDatosUsuario(emailUsuario);
+            if (usuario != null) return usuario.getNombre();
+        } catch (Exception ignored) {}
+        return emailUsuario;
+    }
+
+    private void abrirVentana(VentanaBase ventana) {
+        ventana.setVisible(true);
     }
 }

@@ -122,4 +122,35 @@ public final class FabricaUI {
     public static JButton crearBotonAccionIcono(IconoVectorial.Tipo tipo, Color color, String tooltip) {
         return new BotonAccionIcono(tipo, color, tooltip);
     }
+
+    // ── Logo ───────────────────────────────────────────────────────────────────
+
+    /** Logo de Educ G escalado al alto especificado. Retorna un JLabel con la imagen. */
+    public static JLabel crearLogoEducG(int alto) {
+        try {
+            ImageIcon icon = new ImageIcon("assets/logo-educg.png");
+            Image img = icon.getImage();
+            int ancho = (img.getWidth(null) * alto) / img.getHeight(null);
+            Image imgEscalada = img.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
+            JLabel lbl = new JLabel(new ImageIcon(imgEscalada));
+            lbl.setOpaque(false);
+            return lbl;
+        } catch (Exception e) {
+            JLabel fallback = new JLabel("Educ G");
+            fallback.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
+            fallback.setForeground(Color.WHITE);
+            return fallback;
+        }
+    }
+
+    /** Establece el ícono de Educ G en la barra de título de una ventana. */
+    public static void establecerIconoVentana(JFrame ventana) {
+        try {
+            ImageIcon icon = new ImageIcon("assets/logo-educg-barra-ventana.png");
+            Image img = icon.getImage();
+            ventana.setIconImage(img);
+        } catch (Exception e) {
+            // Si falla, el ícono por defecto de la ventana se mantiene
+        }
+    }
 }

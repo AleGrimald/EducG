@@ -12,7 +12,11 @@ import vista.estilo.FabricaUI;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -24,9 +28,10 @@ public class VentanaMisCursos extends VentanaBase {
     private final String emailUsuario;
 
     public VentanaMisCursos(String emailUsuario) {
-        super("Educ G – Mis Cursos", EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.emailUsuario = emailUsuario;
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
         activarBurbujaChatbot(emailUsuario);
     }
 
@@ -35,6 +40,8 @@ public class VentanaMisCursos extends VentanaBase {
         raiz.setLayout(new BorderLayout());
         setContentPane(raiz);
 
+        String nombreUsuario = resolverNombreUsuario();
+        setTitle("Educ G – " + nombreUsuario);
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -46,24 +53,18 @@ public class VentanaMisCursos extends VentanaBase {
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel appLbl = new JLabel("Educ G");
-        appLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        appLbl.setForeground(Color.WHITE);
+        JLabel appLbl = FabricaUI.crearLogoEducG(100);
 
-        JLabel subLbl = new JLabel("Mi Panel – Mis Cursos");
-        subLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        subLbl.setForeground(new Color(180, 210, 255));
 
         bloqueTitulo.add(appLbl);
-        bloqueTitulo.add(Box.createVerticalStrut(2));
-        bloqueTitulo.add(subLbl);
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
         botonVolver.addActionListener(e -> {
@@ -86,6 +87,10 @@ public class VentanaMisCursos extends VentanaBase {
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(botones, BorderLayout.EAST);
+
+        // ── Pestañas de navegación ─────────────────────────────────────────
+        JPanel pestanas = crearPestanas();
+        encabezado.add(pestanas, BorderLayout.SOUTH);
         return encabezado;
     }
 
@@ -98,10 +103,9 @@ public class VentanaMisCursos extends VentanaBase {
         try {
             List<Inscripcion> inscripciones = controlador.obtenerCursosInscriptos(emailUsuario);
             if (inscripciones.isEmpty()) {
-                agregarTituloSeccion(contenido, "Mis Cursos");
                 contenido.add(Box.createVerticalStrut(16));
                 JLabel vacioLbl = new JLabel("No estás inscripto en ningún curso aún.");
-                vacioLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                vacioLbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
                 vacioLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
                 vacioLbl.setAlignmentX(LEFT_ALIGNMENT);
                 contenido.add(vacioLbl);
@@ -131,8 +135,55 @@ public class VentanaMisCursos extends VentanaBase {
         }
 
         contenido.add(Box.createVerticalGlue());
-        JScrollPane scroll = new JScrollPane(contenido);
+
+        // Título de la sección
+        JLabel tituloSeccion = new JLabel("Mis Cursos");
+        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        tituloSeccion.setForeground(Color.WHITE);
+        tituloSeccion.setBorder(new EmptyBorder(24, 32, 16, 32));
+        tituloSeccion.setOpaque(false);
+
+        // Panel con título + contenido
+        JPanel panelConTitulo = new JPanel(new BorderLayout());
+        panelConTitulo.setOpaque(false);
+        panelConTitulo.add(tituloSeccion, BorderLayout.NORTH);
+        panelConTitulo.add(contenido, BorderLayout.CENTER);
+
+        // Envolver en contenedor centrado: 30% glue - 40% contenido - 30% glue
+        JPanel contenedorCentrado = new JPanel(new GridBagLayout());
+        contenedorCentrado.setOpaque(false);
+        contenedorCentrado.setBorder(new EmptyBorder(24, 32, 26, 32));
+
+        // Panel glue izquierda ()
+        JPanel glueIzq = new JPanel();
+        glueIzq.setOpaque(false);
+        GridBagConstraints gbcIzq = new GridBagConstraints();
+        gbcIzq.weightx = 0.225;
+        gbcIzq.weighty = 1;
+        gbcIzq.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(glueIzq, gbcIzq);
+
+        // Contenido ()
+        GridBagConstraints gbcContenido = new GridBagConstraints();
+        gbcContenido.weightx = 0.55;
+        gbcContenido.weighty = 1;
+        gbcContenido.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(panelConTitulo, gbcContenido);
+
+        // Panel glue derecha ()
+        JPanel glueDer = new JPanel();
+        glueDer.setOpaque(false);
+        GridBagConstraints gbcDer = new GridBagConstraints();
+        gbcDer.weightx = 0.255;
+        gbcDer.weighty = 1;
+        gbcDer.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(glueDer, gbcDer);
+
+        JScrollPane scroll = new JScrollPane(contenedorCentrado);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setViewportBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         return scroll;
     }
@@ -249,5 +300,61 @@ public class VentanaMisCursos extends VentanaBase {
             if (usuario != null) return usuario.getNombre();
         } catch (Exception ignored) {}
         return emailUsuario;
+    }
+
+    private JPanel crearPestanas() {
+        JPanel pestanas = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pestanas.setOpaque(false);
+        pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        String[] labels = {"Catálogo de Cursos", "Mis Datos", "Mis Cursos", "Estadísticas"};
+        Runnable[] acciones = {
+            () -> abrirVentana(new VentanaCursos(emailUsuario)),
+            () -> abrirVentana(new VentanaMisDatos(emailUsuario)),
+            () -> {},
+            () -> abrirVentana(new VentanaMisEstadisticas(emailUsuario))
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            JLabel pestaña = crearPestaña(labels[i], i == 2);
+            final int index = i;
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    if (index == 2) return;
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    acciones[index].run();
+                }
+            });
+            pestanas.add(pestaña);
+        }
+
+        return pestanas;
+    }
+
+    private JLabel crearPestaña(String texto, boolean activa) {
+        JLabel pestaña = new JLabel(texto);
+        pestaña.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pestaña.setForeground(activa ? new Color(37, 99, 235) : new Color(80, 100, 130));
+        pestaña.setBorder(new EmptyBorder(6, 14, 6, 14));
+        pestaña.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pestaña.setOpaque(false);
+
+        if (!activa) {
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) {
+                    pestaña.setForeground(new Color(37, 99, 235));
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    pestaña.setForeground(new Color(80, 100, 130));
+                }
+            });
+        }
+
+        return pestaña;
+    }
+
+    private void abrirVentana(VentanaBase ventana) {
+        ventana.setVisible(true);
     }
 }

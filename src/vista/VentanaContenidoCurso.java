@@ -37,7 +37,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private JPanel panelContenido;
 
     public VentanaContenidoCurso(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
-        super("Educ G – " + curso.getTitulo(), EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.curso = curso;
         this.emailUsuario = emailUsuario;
         this.nombreUsuario = nombreUsuario;
@@ -45,6 +45,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         this.pasos = construirPasos();
         cargarProgreso();
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
         activarBurbujaChatbot(emailUsuario, curso.getTitulo());
     }
 
@@ -100,7 +101,8 @@ public class VentanaContenidoCurso extends VentanaBase {
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();

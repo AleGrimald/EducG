@@ -38,12 +38,13 @@ public class VentanaTest extends VentanaBase {
     private JPanel panelPreguntas;
 
     public VentanaTest(Curso curso, String emailUsuario, Runnable alVolver) {
-        super("Educ G – Test: " + curso.getTitulo(), EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.curso = curso;
         this.emailUsuario = emailUsuario;
         this.alVolver = alVolver;
         cargarPreguntas();
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
     }
 
     private void cargarPreguntas() {
@@ -68,7 +69,8 @@ public class VentanaTest extends VentanaBase {
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 12, 32));
         encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
 

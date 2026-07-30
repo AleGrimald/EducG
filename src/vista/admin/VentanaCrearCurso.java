@@ -61,15 +61,18 @@ public class VentanaCrearCurso extends VentanaBase {
     private JPanel panelPreguntasAgregadas;
 
     public VentanaCrearCurso(String emailAdmin) {
-        super("Educ G – Crear Curso", EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.emailAdmin = emailAdmin;
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
     }
 
     private void construirUI() {
         JPanel raiz = FabricaUI.crearFondoEstandar();
         raiz.setLayout(new BorderLayout());
         setContentPane(raiz);
+
+        setTitle("Educ G – " + emailAdmin);
 
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
@@ -94,23 +97,21 @@ public class VentanaCrearCurso extends VentanaBase {
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel appLbl = new JLabel("Educ G");
-        appLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        appLbl.setForeground(Color.WHITE);
+        JLabel appLbl = FabricaUI.crearLogoEducG(100);
 
         indicadorPaso = new JLabel();
         indicadorPaso.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
         indicadorPaso.setForeground(new Color(180, 210, 255));
 
         bloqueTitulo.add(appLbl);
-        bloqueTitulo.add(Box.createVerticalStrut(2));
         bloqueTitulo.add(indicadorPaso);
 
         JButton botonCancelar = FabricaUI.crearBotonSecundarioPequeno("Cancelar", IconoVectorial.Tipo.CANCELAR);

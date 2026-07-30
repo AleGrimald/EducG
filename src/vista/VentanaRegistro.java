@@ -41,6 +41,7 @@ public class VentanaRegistro extends VentanaBase {
         super("Educ G – Crear cuenta", DISPOSE_ON_CLOSE);
         this.ventanaLogin = ventanaLogin;
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -110,9 +111,7 @@ public class VentanaRegistro extends VentanaBase {
         panel.setBorder(new EmptyBorder(80, 60, 80, 60));
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
-        JLabel tituloPrincipal = new JLabel("Educ G");
-        tituloPrincipal.setFont(EstiloUI.FUENTE_TITULO);
-        tituloPrincipal.setForeground(Color.WHITE);
+        JLabel tituloPrincipal = FabricaUI.crearLogoEducG(80);
         tituloPrincipal.setAlignmentX(CENTER_ALIGNMENT);
         panel.add(tituloPrincipal);
         panel.add(Box.createVerticalStrut(10));

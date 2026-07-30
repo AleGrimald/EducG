@@ -24,7 +24,7 @@ public class TarjetaCurso extends JPanel {
         setOpaque(false);
         setLayout(new BorderLayout());
         setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
-        setPreferredSize(new Dimension(260, 400));
+        setPreferredSize(new Dimension(280, 400));
 
         JPanel interior = new JPanel() {
             @Override

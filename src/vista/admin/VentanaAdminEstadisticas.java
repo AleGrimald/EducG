@@ -26,9 +26,10 @@ public class VentanaAdminEstadisticas extends VentanaBase {
     private final String emailAdmin;
 
     public VentanaAdminEstadisticas(String emailAdmin) {
-        super("Educ G – Estadísticas", EXIT_ON_CLOSE);
+        super("Educ G", EXIT_ON_CLOSE);
         this.emailAdmin = emailAdmin;
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
     }
 
     private void construirUI() {
@@ -36,30 +37,26 @@ public class VentanaAdminEstadisticas extends VentanaBase {
         raiz.setLayout(new BorderLayout());
         setContentPane(raiz);
 
+        setTitle("Educ G – " + emailAdmin);
+
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
         raiz.add(construirContenido(), BorderLayout.CENTER);
     }
 
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(false);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(new Color(240, 245, 250));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel appLbl = new JLabel("Educ G");
-        appLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        appLbl.setForeground(Color.WHITE);
+        JLabel appLbl = FabricaUI.crearLogoEducG(100);
 
-        JLabel subLbl = new JLabel("Panel de Administrador – Estadísticas");
-        subLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        subLbl.setForeground(new Color(180, 210, 255));
 
         bloqueTitulo.add(appLbl);
-        bloqueTitulo.add(Box.createVerticalStrut(2));
-        bloqueTitulo.add(subLbl);
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
         botonVolver.addActionListener(e -> {

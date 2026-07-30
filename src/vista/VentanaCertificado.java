@@ -53,16 +53,14 @@ public class VentanaCertificado extends VentanaBase {
             }
         };
         certificado.setOpaque(false);
-        certificado.setPreferredSize(new Dimension(760, 520));
-        certificado.setBorder(new EmptyBorder(50, 60, 40, 60));
+        certificado.setPreferredSize(new Dimension(780, 620));
+        certificado.setBorder(new EmptyBorder(40, 50, 40, 50));
 
         JPanel centro = new JPanel();
         centro.setOpaque(false);
         centro.setLayout(new BoxLayout(centro, BoxLayout.Y_AXIS));
 
-        JLabel marcaLbl = new JLabel("🎓 EDUC G");
-        marcaLbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        marcaLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        JLabel marcaLbl = FabricaUI.crearLogoEducG(160);
         marcaLbl.setAlignmentX(CENTER_ALIGNMENT);
 
         JLabel tituloLbl = new JLabel("Certificado de Finalización");

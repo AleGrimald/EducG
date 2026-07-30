@@ -23,6 +23,7 @@ public class VentanaLogin extends VentanaBase {
     public VentanaLogin() {
         super("Educ G – Iniciar Sesión", EXIT_ON_CLOSE);
         construirUI();
+        FabricaUI.establecerIconoVentana(this);
     }
 
     private void construirUI() {
