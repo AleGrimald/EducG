@@ -6,13 +6,13 @@ import java.util.List;
 public class Curso {
 
     private final int id;
-    private final String emoji;
+    private final byte[] emoji;
     private final String titulo;
     private final String descripcion;
     private final String duracion;
     private final List<Leccion> lecciones;
 
-    public Curso(int id, String emoji, String titulo, String descripcion,
+    public Curso(int id, byte[] emoji, String titulo, String descripcion,
                  String duracion, List<Leccion> lecciones) {
         this.id          = id;
         this.emoji       = emoji;
@@ -23,7 +23,7 @@ public class Curso {
     }
 
     public int          getId()          { return id; }
-    public String       getEmoji()       { return emoji; }
+    public byte[]        getEmoji()       { return emoji; }
     public String       getTitulo()      { return titulo; }
     public String       getDescripcion() { return descripcion; }
     public String       getDuracion()    { return duracion; }

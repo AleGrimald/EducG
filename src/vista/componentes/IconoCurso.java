@@ -1,67 +1,59 @@
 package vista.componentes;
 
 import modelo.Curso;
+import vista.estilo.EstiloUI;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Logos a color de tecnologías (java.png, python.png, sql.png, react.png, github.png,
- * algoritmo.png en {@code assets/}), usados como ícono de un curso cuando su título
- * menciona esa tecnología. A diferencia de {@link IconoPng} (íconos de UI monocromáticos,
- * recoloreados al vuelo) estos se dibujan con sus colores originales — nunca se tiñen.
+ * Ícono de un curso: el PNG guardado en {@code cursos.emoji} ({@code LONGBLOB} — ver
+ * {@link SelectorIconoCurso}, que es quien copia los bytes de uno de los PNG de
+ * {@code assets/} al elegirlo), o un placeholder con la inicial del título si el curso
+ * todavía no tiene ninguno asignado.
  */
 public final class IconoCurso {
 
-    private static final String CARPETA = "assets/";
-
-    /** Palabra clave (buscada en minúsculas dentro del título) → archivo. Se evalúa en orden. */
-    private static final String[][] MAPEO = {
-        {"python", "python.png"},
-        {"sql", "sql.png"},
-        {"java", "java.png"},
-        {"github", "github.png"},
-        {"git", "github.png"},
-        {"algoritmo", "algoritmo.png"},
-        {"full stack", "react.png"},
-        {"react", "react.png"},
-        {"web", "react.png"},
+    private static final Color[] PALETA_PLACEHOLDER = {
+        EstiloUI.AZUL_CLARO, EstiloUI.EXITO, EstiloUI.ADVERTENCIA, EstiloUI.ERROR, new Color(142, 68, 173)
     };
-
-    private static final Map<String, Image> CACHE = new ConcurrentHashMap<>();
 
     private IconoCurso() {}
 
-    /** @return el logo escalado a {@code size}x{@code size} si el título matchea una tecnología conocida, o null. */
-    public static Image obtener(String tituloCurso, int size) {
-        String archivo = resolverArchivo(tituloCurso);
-        if (archivo == null) return null;
-        String clave = archivo + "|" + size;
-        return CACHE.computeIfAbsent(clave, k -> cargarEscalado(archivo, size));
+    /** @return el PNG escalado a {@code size}x{@code size}, o null si no hay datos o no se puede decodificar. */
+    public static Image cargar(byte[] datosPng, int size) {
+        if (datosPng == null || datosPng.length == 0) return null;
+        try {
+            BufferedImage original = ImageIO.read(new ByteArrayInputStream(datosPng));
+            if (original == null) return null;
+            return original.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
-    /**
-     * Etiqueta cuadrada lista para usar como ícono de un curso: el logo a color si el título
-     * matchea una tecnología conocida, o el emoji del curso como respaldo si no.
-     */
+    /** Etiqueta cuadrada lista para usar como ícono de un curso. */
     public static JLabel crearEtiqueta(Curso curso, int size) {
+        return crearEtiqueta(curso.getEmoji(), curso.getTitulo(), size);
+    }
+
+    public static JLabel crearEtiqueta(byte[] datosPng, String tituloCurso, int size) {
         JLabel lbl;
-        Image logo = obtener(curso.getTitulo(), size);
-        if (logo != null) {
-            lbl = new JLabel(new ImageIcon(logo));
+        Image icono = cargar(datosPng, size);
+        if (icono != null) {
+            lbl = new JLabel(new ImageIcon(icono));
+            lbl.setOpaque(false);
         } else {
-            lbl = new JLabel(curso.getEmoji());
-            // Los glifos de emoji a color de Windows (Segoe UI Emoji) se renderizan bastante
-            // más grandes que el tamaño de fuente nominal, así que una fuente chica + una caja
-            // algo más grande evita que Swing los recorte contra los bordes.
-            lbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, Math.round(size * 0.45f)));
+            lbl = new JLabel(inicial(tituloCurso));
+            lbl.setFont(new Font("Segoe UI", Font.BOLD, Math.round(size * 0.42f)));
+            lbl.setForeground(Color.WHITE);
+            lbl.setOpaque(true);
+            lbl.setBackground(colorParaPlaceholder(tituloCurso));
         }
         lbl.setHorizontalAlignment(SwingConstants.CENTER);
         Dimension tamano = new Dimension(size, size);
@@ -71,23 +63,13 @@ public final class IconoCurso {
         return lbl;
     }
 
-    private static String resolverArchivo(String titulo) {
-        if (titulo == null) return null;
-        String t = titulo.toLowerCase(Locale.ROOT);
-        for (String[] par : MAPEO) {
-            if (t.contains(par[0])) return par[1];
-        }
-        return null;
+    private static String inicial(String titulo) {
+        return (titulo != null && !titulo.isBlank()) ? titulo.substring(0, 1).toUpperCase(Locale.ROOT) : "?";
     }
 
-    private static Image cargarEscalado(String archivo, int size) {
-        try {
-            File f = new File(CARPETA + archivo);
-            if (!f.exists()) return null;
-            BufferedImage original = ImageIO.read(f);
-            return original.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-        } catch (IOException e) {
-            return null;
-        }
+    /** Color estable por curso (derivado del hash del título) para que el placeholder no cambie entre recargas. */
+    private static Color colorParaPlaceholder(String titulo) {
+        int hash = (titulo == null) ? 0 : titulo.hashCode();
+        return PALETA_PLACEHOLDER[Math.floorMod(hash, PALETA_PLACEHOLDER.length)];
     }
 }

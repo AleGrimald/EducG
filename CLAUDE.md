@@ -79,7 +79,8 @@ separados; para reconstruir la base desde cero alcanza con correr ese único arc
 | Table | Purpose | Key Fields |
 |-------|---------|-----------|
 | **usuarios** | User accounts | id (PK), email (UNIQUE), password_hash (salt:sha256), nombre, apellido, dni (BIGINT), telefono (VARCHAR(20)), es_admin (TINYINT(1), default 0), activo (soft delete), fecha_creacion, fecha_modificacion |
-| **cursos** | Course catalog | id, emoji, titulo (UNIQUE), descripcion, duracion, activo (soft delete), fecha_creacion, fecha_modificacion |
+| **cursos** | Course catalog | id, emoji (INT, FK → imagenes.id_imagen, nullable — el ícono del curso), titulo (UNIQUE), descripcion, duracion, activo (soft delete), fecha_creacion, fecha_modificacion |
+| **imagenes** | Binarios de imágenes (LONGBLOB): logo de la app, ícono de ventana, e íconos de tecnología seleccionables para un curso | id_imagen (PK), datos (LONGBLOB), clave (VARCHAR(50) UNIQUE, nullable — `logo_app`/`icono_ventana`/`icono_python`/`icono_java`/`icono_github`/`icono_react`/`icono_sql`/`icono_algoritmo`; los íconos de curso se resuelven por esta clave, nunca por id fijo) |
 | **curso_contenidos** | Course lessons (title + body, resolves 1NF) | curso_id (FK), orden, topico, contenido (LONGTEXT — texto completo de la lección), ejercicio_propuesto (TEXT NULL — enunciado opcional del wizard "Crear Curso"), respuesta_esperada (VARCHAR(255) NULL — obligatoria si hay ejercicio, se usa para verificarlo), activo |
 | **inscripciones** | User-course enrollments (N:M) | usuario_id (FK), curso_id (FK), fecha_inscripcion, activo, leccion_actual (TINYINT, progreso guardado en qué lección paró) |
 | **test_resultados** | Test attempt scores | usuario_id (FK), curso_id (FK), puntaje, aprobado (TINYINT(1), calculado por el procedure al insertar), fecha |
@@ -125,16 +126,19 @@ los del panel de administrador (más nuevos) usan `crear`/`activar`/`desactivar`
 | `sp_listar_inscripciones_usuario` | `InscripcionDAOJdbc.listarPorUsuario()` |
 | `sp_listar_resultados_test_usuario` | `ResultadoTestDAOJdbc.listarPorUsuario()` |
 | `sp_obtener_estadisticas_usuario` | `ResultadoTestDAOJdbc.obtenerEstadisticas()` — `cursos_completados`/`tests_realizados`/`promedio_puntaje` |
-| `sp_listar_cursos_catalogo` | `CursoDAOJdbc.listarCatalogo()` — filtra `activo=1` |
+| `sp_listar_cursos_catalogo` | `CursoDAOJdbc.listarCatalogo()` — filtra `activo=1`; `LEFT JOIN imagenes` para traer el ícono (`emoji_datos`/`emoji_clave`) junto con el curso |
+| `sp_obtener_imagen_por_clave` | `ImagenDAOJdbc.obtenerPorClave()` — devuelve `id_imagen, datos` por `imagenes.clave`; usado por `FabricaUI` (logo/ícono de ventana) y por `AdminCursoDAOJdbc` para resolver la clave elegida en el selector de ícono de curso al id que esperan `sp_crear_curso`/`sp_modificar_curso` |
+| `sp_crear_imagen` | `AdminCursoDAOJdbc` (interno, vía `resolverIdImagen`) — inserta un PNG subido desde `SelectorIconoCurso` como fila nueva en `imagenes` con una clave generada (`custom_<uuid>`), para que una edición posterior que no toque el ícono re-resuelva la misma fila en vez de duplicarla |
 | `sp_listar_contenidos_curso` | `CursoDAOJdbc.listarLecciones()` (privado) — por `curso_id`, no por título |
 | `sp_listar_preguntas_curso` | `TestPreguntasDAOJdbc.listarPorCurso()` — por `curso_id`; 10 al azar de 20, JOIN con `test_opciones` |
 | `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — por `curso_id`, calcula `aprobado` y emite certificado si corresponde |
 | `sp_alta_respuesta_test` | `ResultadoTestDAOJdbc.registrarRespuesta()` |
 | `sp_obtener_mejor_puntaje_curso` | `ResultadoTestDAOJdbc.obtenerMejorPuntaje()` — mejor puntaje histórico (apruebe o no), -1 si nunca lo rindió |
 | `sp_obtener_progreso_inscripcion` / `sp_modificar_progreso_inscripcion` | `InscripcionDAOJdbc` — por `curso_id` |
-| `sp_crear_curso` / `sp_modificar_curso` / `sp_activar_curso` / `sp_desactivar_curso` / `sp_eliminar_curso` | `AdminCursoDAOJdbc` (admin) |
-| `sp_listar_todos_cursos` / `sp_buscar_todos_cursos` | `AdminCursoDAOJdbc.listarTodos()`/`buscarPorNombreLike()` — incluyen inactivos, a diferencia de `sp_listar_cursos_catalogo` |
+| `sp_crear_curso` / `sp_modificar_curso` / `sp_activar_curso` / `sp_desactivar_curso` / `sp_eliminar_curso` | `AdminCursoDAOJdbc` (admin) — `p_emoji` es un `id_imagen` (INT, nullable), no bytes; `AdminCursoDAOJdbc` lo resuelve desde la clave del selector vía `sp_obtener_imagen_por_clave` antes de llamar a estos dos |
+| `sp_listar_todos_cursos` / `sp_buscar_todos_cursos` | `AdminCursoDAOJdbc.listarTodos()`/`buscarPorNombreLike()` — incluyen inactivos, a diferencia de `sp_listar_cursos_catalogo`; mismo `LEFT JOIN imagenes` para `emoji_datos`/`emoji_clave` |
 | `sp_crear_leccion` | `AdminCursoDAOJdbc` — alta de un ítem del Plan de Estudio (wizard), incluye `ejercicio_propuesto` |
+| `sp_modificar_orden_leccion` | `AdminCursoDAOJdbc.reordenarPlan()` — reordenar por drag & drop en el panel de administrador: renumera `curso_contenidos.orden` de un ítem a la vez, uno por cada ítem de la lista, en una única transacción |
 | `sp_crear_pregunta` / `sp_crear_opcion_pregunta` | `AdminCursoDAOJdbc` — alta de preguntas/opciones (paso 4 del wizard) |
 | `sp_listar_todos_usuarios` | `AdminAlumnoDAOJdbc.listarTodos()` — solo `es_admin=0` (alumnos) |
 | `sp_buscar_usuario_por_dni` | `AdminAlumnoDAOJdbc.buscarPorDni()` — coincidencia exacta, incluye inactivos |
@@ -235,7 +239,7 @@ All Swing components created via `FabricaUI` static factories (which read colors
 ### Course Catalog & Content (DB-driven)
 
 El catálogo ya NO está hardcodeado en Java: `servicio.ServicioCursos` (vía `dao.CursoDAO`) lee `cursos` + `curso_contenidos` de la base, y `modelo.Curso` ahora lleva su `id` (además de emoji/título/descripción/duración/lecciones) porque el resto de los procedures (contenidos, preguntas, inscripciones, resultados) identifican al curso por `id`, no por título — solo `ServicioCursos.buscarPorTitulo()` sigue resolviendo por título, filtrando en Java sobre `listarCatalogo()`. Para agregar un curso a mano (fuera del wizard admin):
-1. `INSERT INTO cursos (emoji, titulo, descripcion, duracion) VALUES (...);`
+1. `INSERT INTO cursos (emoji, titulo, descripcion, duracion) VALUES ((SELECT id_imagen FROM imagenes WHERE clave='icono_python'), ...);` — `emoji` es la FK a `imagenes.id_imagen` (NULL = sin ícono), no un valor literal
 2. `INSERT INTO curso_contenidos (curso_id, orden, topico, contenido, ejercicio_propuesto) VALUES (...)` — una fila por lección (orden 0 = "Introducción", 1-N = clases), con el texto completo en `contenido`
 3. Al menos 20 preguntas en `test_preguntas` + 4 opciones cada una en `test_opciones` — `sp_listar_preguntas_curso` elige 10 al azar del banco disponible en cada llamada
 
@@ -320,9 +324,15 @@ real a un servicio externo, y bloquear el EDT congelaría la ventana).
 El rol de administrador es el booleano `usuarios.es_admin` (no una columna `rol`).
 `VentanaLogin.manejarLogin()` llama a `ControladorLogin.esAdmin(email)` (→ `ServicioAuth`
 → `UsuarioDAO.esAdmin` → `sp_obtener_usuario`, leyendo la columna `es_admin`) **después**
-de un login exitoso y bifurca a `vista.admin.VentanaAdmin` o a `VentanaCursos` según el
-resultado — el resto del flujo de alumno no cambia. No hay pantalla de login separada;
-`educg_db.sql` ya trae una cuenta admin sembrada (`admin@educg.com`) para arrancar.
+de un login exitoso y bifurca a `vista.admin.VentanaAdminAlumnos` o a `VentanaCursos` según
+el resultado — no hay pantalla "hub" intermedia, el admin entra directo al primer submódulo
+(Alumnos). No hay pantalla de login separada; `educg_db.sql` ya trae una cuenta admin
+sembrada (`admin@educg.com`) para arrancar.
+
+Los tres submódulos (`VentanaAdminAlumnos`/`VentanaAdminCursos`/`VentanaAdminEstadisticas`)
+comparten una barra de pestañas en el encabezado (Alumnos/Cursos/Estadísticas) para saltar
+entre ellos, igual patrón que las pestañas del lado alumno (`VentanaMisDatos`/`VentanaMisCursos`/
+`VentanaMisEstadisticas`) — no hay botón "Volver" en ninguno de los dos lados.
 
 Todo el código del panel vive en paquetes propios que siguen las mismas capas Vista→Controlador→
 Servicio→DAO→stored procedures que el resto de la app (`vista.admin`, más `Admin*` en `dao`/
@@ -395,8 +405,8 @@ Main → VentanaLogin
   │    └─ [Iniciar Curso / Ingresar] → VentanaContenidoCurso
   │         ├─ [Hacer Test] → VentanaTest → corrige y vuelve a VentanaContenidoCurso
   │         └─ [Ver Certificado] → VentanaCertificado (ventana secundaria, no reemplaza a la anterior)
-  └─ [Login exitoso, rol='admin'] → vista.admin.VentanaAdmin
-       ├─ [Alumnos] → VentanaAdminAlumnos (alta/DialogoFormAlumno, baja, eliminar)
+  └─ [Login exitoso, rol='admin'] → vista.admin.VentanaAdminAlumnos (pestañas: Alumnos/Cursos/Estadísticas)
+       ├─ [Alumnos] → alta/DialogoFormAlumno, baja, eliminar
        ├─ [Cursos] → VentanaAdminCursos
        │    ├─ [Modificar] → DialogoFormCurso
        │    └─ [+ Crear Curso] → VentanaCrearCurso (wizard de 4 pasos) → vuelve a VentanaAdminCursos
@@ -538,3 +548,4 @@ Dialogs automatically animate in/out and success/info dialogs auto-close after 2
 - **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a `CREATE PROCEDURE` directly against the running database and re-export `educg_db.sql` (`mysqldump --routines --triggers --single-transaction --add-drop-table --databases educg_db > educg_db.sql`) so the single file stays the source of truth — there's no separate incremental-migration file to edit anymore.
 - **`dni`/`telefono` are required:** at the app layer (`Validador`/`VentanaRegistro`); `sp_alta_usuario` will fail without them since they're `NOT NULL` columns, but unlike an earlier version of this schema, `dni` does **not** have a `UNIQUE` constraint in the database — duplicates aren't blocked at the DB level.
 - **Certificates ARE persisted** (unlike an earlier version of this app): `sp_alta_resultado_test` does `INSERT IGNORE INTO certificados` when a test attempt approves (`UNIQUE(usuario_id, curso_id)` keeps only the first). `VentanaCertificado` still generates its view on the fly rather than reading that table, but the data exists for a future "certificados emitidos" screen (`sp_listar_certificados_emitidos` is already defined, unused by Java so far).
+- **App logo/window icon now live in the `imagenes` table** (`FabricaUI.crearLogoEducG()`/`establecerIconoVentana()`, via `ImagenDAOJdbc`, keys `logo_app`/`icono_ventana`), not `assets/` — unlike before, `VentanaLogin` (the very first, pre-authentication window) now needs a live DB connection just to render its logo/icon. Both calls keep their original try/catch fallback (plain "Educ G" text label / default window icon), so a DB outage still degrades gracefully — just with the added latency of a failed connection attempt (JDBC driver default timeout) before falling back, instead of an instant local file-not-found.

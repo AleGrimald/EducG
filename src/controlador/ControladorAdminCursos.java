@@ -2,6 +2,8 @@ package controlador;
 
 import dao.AdminCursoDAOJdbc;
 import modelo.CursoAdmin;
+import modelo.ItemPlanEstudio;
+import modelo.SeleccionIcono;
 import servicio.ServicioAdminCursos;
 
 import java.sql.SQLException;
@@ -21,9 +23,9 @@ public class ControladorAdminCursos {
     }
 
     /** @return true si se modificó, false si no se encontró ese id */
-    public boolean modificar(int id, String emoji, String titulo, String descripcion, String duracion) throws SQLException {
-        validarDatosBasicos(emoji, titulo, descripcion, duracion);
-        return servicio.modificar(id, emoji, titulo, descripcion, duracion);
+    public boolean modificar(int id, SeleccionIcono icono, String titulo, String descripcion, String duracion) throws SQLException {
+        validarDatosBasicos(icono, titulo, descripcion, duracion);
+        return servicio.modificar(id, icono, titulo, descripcion, duracion);
     }
 
     public boolean bajaLogica(int id) throws SQLException {
@@ -38,9 +40,51 @@ public class ControladorAdminCursos {
         return servicio.eliminar(id);
     }
 
-    static void validarDatosBasicos(String emoji, String titulo, String descripcion, String duracion) {
-        if (emoji == null || emoji.isBlank() || emoji.length() > 10)
-            throw new IllegalArgumentException("Ingresá un emoji para el curso (máx. 10 caracteres).");
+    public List<ItemPlanEstudio> listarPlanEstudio(int cursoId) throws SQLException {
+        return servicio.listarPlanEstudio(cursoId);
+    }
+
+    public void agregarItemPlan(int cursoId, int orden, String topico, String contenido,
+                                 String ejercicioPropuesto, String respuestaEsperada) throws SQLException {
+        validarTopicoContenido(topico, contenido);
+        if (ejercicioPropuesto != null && !ejercicioPropuesto.isBlank()
+            && (respuestaEsperada == null || respuestaEsperada.isBlank())) {
+            throw new IllegalArgumentException(
+                "Completá la respuesta esperada del ejercicio, o borrá el ejercicio propuesto.");
+        }
+        servicio.agregarItemPlan(cursoId, orden, topico, contenido,
+            (ejercicioPropuesto == null || ejercicioPropuesto.isBlank()) ? null : ejercicioPropuesto,
+            (respuestaEsperada == null || respuestaEsperada.isBlank()) ? null : respuestaEsperada);
+    }
+
+    /** @return true si se modificó, false si no se encontró ese ítem */
+    public boolean modificarItemPlan(int leccionId, String topico, String contenido) throws SQLException {
+        validarTopicoContenido(topico, contenido);
+        return servicio.modificarItemPlan(leccionId, topico, contenido);
+    }
+
+    public boolean eliminarItemPlan(int leccionId) throws SQLException {
+        return servicio.eliminarItemPlan(leccionId);
+    }
+
+    public void reordenarPlan(List<ItemPlanEstudio> itemsEnOrden) throws SQLException {
+        servicio.reordenarPlan(itemsEnOrden);
+    }
+
+    private static void validarTopicoContenido(String topico, String contenido) {
+        if (topico == null || topico.isBlank())
+            throw new IllegalArgumentException("Ingresá un nombre para el tema.");
+        if (topico.length() > 200)
+            throw new IllegalArgumentException("El nombre del tema no puede superar los 200 caracteres.");
+        if (contenido == null || contenido.isBlank())
+            throw new IllegalArgumentException("Ingresá el contenido teórico del tema.");
+    }
+
+    private static final int TAMANO_MAXIMO_ICONO_SUBIDO = 5 * 1024 * 1024; // 5 MB, margen generoso para un PNG
+
+    static void validarDatosBasicos(SeleccionIcono icono, String titulo, String descripcion, String duracion) {
+        if (icono != null && icono.esArchivoSubido() && icono.getDatos().length > TAMANO_MAXIMO_ICONO_SUBIDO)
+            throw new IllegalArgumentException("La imagen elegida es demasiado pesada (máx. 5 MB).");
         if (titulo == null || titulo.isBlank() || titulo.length() > 200)
             throw new IllegalArgumentException("El título debe tener entre 1 y 200 caracteres.");
         if (descripcion == null || descripcion.isBlank())

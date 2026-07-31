@@ -4,6 +4,7 @@ import controlador.ControladorAdminCursos;
 import modelo.CursoAdmin;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.IconoVectorial;
+import vista.componentes.SelectorIconoCurso;
 import vista.estilo.FabricaUI;
 
 import javax.swing.*;
@@ -18,7 +19,7 @@ public class DialogoFormCurso extends JDialog {
     private final ControladorAdminCursos controlador;
     private final Runnable alGuardar;
 
-    private JTextField campoEmoji;
+    private SelectorIconoCurso campoEmoji;
     private JTextField campoTitulo;
     private JTextArea campoDescripcion;
     private JTextField campoDuracion;
@@ -43,8 +44,8 @@ public class DialogoFormCurso extends JDialog {
         gbc.gridx = 0;
         int fila = 0;
 
-        agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Emoji"), new Insets(0, 0, 6, 0));
-        campoEmoji = FabricaUI.crearCampo();
+        agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Ícono"), new Insets(0, 0, 6, 0));
+        campoEmoji = new SelectorIconoCurso(padre);
         agregarFila(raiz, gbc, fila++, campoEmoji, new Insets(0, 0, 14, 0));
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Título"), new Insets(0, 0, 6, 0));
@@ -52,7 +53,7 @@ public class DialogoFormCurso extends JDialog {
         agregarFila(raiz, gbc, fila++, campoTitulo, new Insets(0, 0, 14, 0));
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Descripción"), new Insets(0, 0, 6, 0));
-        campoDescripcion = new JTextArea(4, 20);
+        campoDescripcion = new JTextArea(8, 20);
         campoDescripcion.setLineWrap(true);
         campoDescripcion.setWrapStyleWord(true);
         campoDescripcion.setFont(FabricaUI.crearCampo().getFont());
@@ -63,7 +64,7 @@ public class DialogoFormCurso extends JDialog {
         campoDuracion = FabricaUI.crearCampo();
         agregarFila(raiz, gbc, fila++, campoDuracion, new Insets(0, 0, 18, 0));
 
-        campoEmoji.setText(cursoExistente.getEmoji());
+        campoEmoji.establecerActual(cursoExistente.getEmojiClave(), cursoExistente.getEmoji());
         campoTitulo.setText(cursoExistente.getTitulo());
         campoDescripcion.setText(cursoExistente.getDescripcion());
         campoDuracion.setText(cursoExistente.getDuracion());
@@ -78,7 +79,7 @@ public class DialogoFormCurso extends JDialog {
         botones.add(botonGuardar);
         agregarFila(raiz, gbc, fila, botones, new Insets(10, 0, 0, 0));
 
-        setSize(460, 480);
+        setSize(500, 700);
         setResizable(false);
         setLocationRelativeTo(padre);
         getRootPane().setDefaultButton(botonGuardar);
@@ -92,7 +93,7 @@ public class DialogoFormCurso extends JDialog {
 
     private void guardar() {
         try {
-            controlador.modificar(cursoExistente.getId(), campoEmoji.getText().trim(), campoTitulo.getText().trim(),
+            controlador.modificar(cursoExistente.getId(), campoEmoji.getSeleccion(), campoTitulo.getText().trim(),
                 campoDescripcion.getText().trim(), campoDuracion.getText().trim());
             dispose();
             alGuardar.run();

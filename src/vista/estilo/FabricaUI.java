@@ -1,18 +1,30 @@
 package vista.estilo;
 
+import dao.ImagenDAOJdbc;
+import modelo.Imagen;
 import vista.componentes.BotonAccionIcono;
 import vista.componentes.BotonRedondeado;
+import vista.componentes.CampoConPlaceholder;
 import vista.componentes.IconoVectorial;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.io.ByteArrayInputStream;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Fábrica de componentes Swing con el estilo visual de Educ G, basada en {@link EstiloUI}. */
 public final class FabricaUI {
 
     private FabricaUI() {}
+
+    /** Logo/ícono de ventana viven en la tabla {@code imagenes}; se cachean acá para no consultar
+     * la base en cada ventana construida (ambos son estáticos durante toda la sesión). */
+    private static final Map<String, byte[]> CACHE_IMAGENES = new HashMap<>();
 
     // ── Paneles ───────────────────────────────────────────────────────────────
 
@@ -51,6 +63,13 @@ public final class FabricaUI {
 
     public static JPasswordField crearCampoPassword() {
         JPasswordField f = new JPasswordField();
+        estilizarCampo(f);
+        return f;
+    }
+
+    /** Campo de texto con un texto de ejemplo tenue mientras está vacío (ej. campos de búsqueda). */
+    public static JTextField crearCampoConPlaceholder(String placeholder) {
+        JTextField f = new CampoConPlaceholder(placeholder);
         estilizarCampo(f);
         return f;
     }
@@ -128,8 +147,7 @@ public final class FabricaUI {
     /** Logo de Educ G escalado al alto especificado. Retorna un JLabel con la imagen. */
     public static JLabel crearLogoEducG(int alto) {
         try {
-            ImageIcon icon = new ImageIcon("assets/logo-educg.png");
-            Image img = icon.getImage();
+            Image img = ImageIO.read(new ByteArrayInputStream(obtenerImagenCacheada("logo_app")));
             int ancho = (img.getWidth(null) * alto) / img.getHeight(null);
             Image imgEscalada = img.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
             JLabel lbl = new JLabel(new ImageIcon(imgEscalada));
@@ -146,11 +164,19 @@ public final class FabricaUI {
     /** Establece el ícono de Educ G en la barra de título de una ventana. */
     public static void establecerIconoVentana(JFrame ventana) {
         try {
-            ImageIcon icon = new ImageIcon("assets/logo-educg-barra-ventana.png");
-            Image img = icon.getImage();
-            ventana.setIconImage(img);
+            ventana.setIconImage(ImageIO.read(new ByteArrayInputStream(obtenerImagenCacheada("icono_ventana"))));
         } catch (Exception e) {
             // Si falla, el ícono por defecto de la ventana se mantiene
         }
+    }
+
+    /** Bytes de una imagen de la tabla {@code imagenes} por su clave, cacheados tras la primera consulta. */
+    private static byte[] obtenerImagenCacheada(String clave) throws SQLException {
+        byte[] cacheado = CACHE_IMAGENES.get(clave);
+        if (cacheado != null) return cacheado;
+        Imagen imagen = new ImagenDAOJdbc().obtenerPorClave(clave);
+        if (imagen == null) throw new SQLException("No existe la imagen '" + clave + "'.");
+        CACHE_IMAGENES.put(clave, imagen.getDatos());
+        return imagen.getDatos();
     }
 }

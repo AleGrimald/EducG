@@ -13,7 +13,10 @@ import vista.estilo.FabricaUI;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.sql.SQLException;
 import java.util.List;
@@ -58,13 +61,6 @@ public class VentanaAdminEstadisticas extends VentanaBase {
 
         bloqueTitulo.add(appLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
-        botonVolver.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaAdmin(emailAdmin).setVisible(true);
-        });
-
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
@@ -74,12 +70,70 @@ public class VentanaAdminEstadisticas extends VentanaBase {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonVolver);
         botones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(botones, BorderLayout.EAST);
+
+        // ── Pestañas de navegación ─────────────────────────────────────────
+        JPanel pestanas = crearPestanas();
+        encabezado.add(pestanas, BorderLayout.SOUTH);
         return encabezado;
+    }
+
+    private JPanel crearPestanas() {
+        JPanel pestanas = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pestanas.setOpaque(false);
+        pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        String[] labels = {"Alumnos", "Cursos", "Estadísticas"};
+        Runnable[] acciones = {
+            () -> abrirVentana(new VentanaAdminAlumnos(emailAdmin)),
+            () -> abrirVentana(new VentanaAdminCursos(emailAdmin)),
+            () -> {}
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            JLabel pestaña = crearPestaña(labels[i], i == 2);
+            final int index = i;
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    if (index == 2) return;
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    acciones[index].run();
+                }
+            });
+            pestanas.add(pestaña);
+        }
+
+        return pestanas;
+    }
+
+    private JLabel crearPestaña(String texto, boolean activa) {
+        JLabel pestaña = new JLabel(texto);
+        pestaña.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pestaña.setForeground(activa ? new Color(37, 99, 235) : new Color(80, 100, 130));
+        pestaña.setBorder(new EmptyBorder(6, 14, 6, 14));
+        pestaña.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pestaña.setOpaque(false);
+
+        if (!activa) {
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) {
+                    pestaña.setForeground(new Color(37, 99, 235));
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    pestaña.setForeground(new Color(80, 100, 130));
+                }
+            });
+        }
+
+        return pestaña;
+    }
+
+    private void abrirVentana(VentanaBase ventana) {
+        ventana.setVisible(true);
     }
 
     private JScrollPane construirContenido() {
@@ -87,6 +141,13 @@ public class VentanaAdminEstadisticas extends VentanaBase {
         contenido.setOpaque(false);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
         contenido.setBorder(new EmptyBorder(4, 40, 30, 40));
+
+        JLabel tituloSeccion = new JLabel("Estadísticas");
+        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        tituloSeccion.setForeground(Color.WHITE);
+        tituloSeccion.setAlignmentX(LEFT_ALIGNMENT);
+        tituloSeccion.setBorder(new EmptyBorder(16, 0, 16, 0));
+        contenido.add(tituloSeccion);
 
         try {
             EstadisticasGenerales generales = controlador.obtenerGenerales();
@@ -250,6 +311,9 @@ public class VentanaAdminEstadisticas extends VentanaBase {
         tabla.setRowHeight(30);
         tabla.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         tabla.setSelectionBackground(new Color(220, 235, 255));
+        centrar(tabla, 1); // Inscriptos
+        centrar(tabla, 2); // Promedio
+        centrar(tabla, 3); // % Aprobación
 
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setPreferredSize(new Dimension(0, Math.min(260, 60 + porCurso.size() * 30)));
@@ -294,6 +358,12 @@ public class VentanaAdminEstadisticas extends VentanaBase {
             panel.add(fila);
         }
         return panel;
+    }
+
+    private void centrar(JTable tabla, int indice) {
+        DefaultTableCellRenderer renderizador = new DefaultTableCellRenderer();
+        renderizador.setHorizontalAlignment(SwingConstants.CENTER);
+        tabla.getColumnModel().getColumn(indice).setCellRenderer(renderizador);
     }
 
     private JLabel etiquetaVacio(String texto) {

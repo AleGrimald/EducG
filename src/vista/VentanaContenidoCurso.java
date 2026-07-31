@@ -4,6 +4,7 @@ import controlador.ControladorCursos;
 import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.Leccion;
+import vista.componentes.IconoCurso;
 import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -109,15 +110,20 @@ public class VentanaContenidoCurso extends VentanaBase {
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel tituloLbl = new JLabel(curso.getEmoji() + "  " + curso.getTitulo());
+        JPanel filaTitulo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filaTitulo.setOpaque(false);
+        filaTitulo.setAlignmentX(LEFT_ALIGNMENT);
+        filaTitulo.add(IconoCurso.crearEtiqueta(curso, 36));
+        JLabel tituloLbl = new JLabel(curso.getTitulo());
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
         tituloLbl.setForeground(Color.WHITE);
+        filaTitulo.add(tituloLbl);
 
         JLabel duracionLbl = new JLabel("⏱ " + curso.getDuracion() + "  ·  " + curso.getDescripcion());
         duracionLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
         duracionLbl.setForeground(new Color(200, 220, 255));
 
-        bloqueTitulo.add(tituloLbl);
+        bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(duracionLbl);
 

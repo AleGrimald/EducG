@@ -193,7 +193,7 @@ public class VentanaLogin extends VentanaBase {
                 if (!iniciarTransicionUnica()) return;
                 dispose();
                 if (controlador.esAdmin(email)) {
-                    new vista.admin.VentanaAdmin(email).setVisible(true);
+                    new vista.admin.VentanaAdminAlumnos(email).setVisible(true);
                 } else {
                     new VentanaCursos(email).setVisible(true);
                 }

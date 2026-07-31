@@ -5,10 +5,12 @@ import modelo.CursoAdmin;
 import modelo.ItemPlanEstudio;
 import modelo.OpcionTest;
 import modelo.PreguntaTest;
+import modelo.SeleccionIcono;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Implementación de {@link AdminCursoDAO} sobre stored procedures. {@link #guardarCursoCompleto}
@@ -46,18 +48,23 @@ public class AdminCursoDAOJdbc implements AdminCursoDAO {
     }
 
     @Override
-    public boolean modificarCurso(int id, String emoji, String titulo, String descripcion, String duracion) throws SQLException {
+    public boolean modificarCurso(int id, SeleccionIcono icono, String titulo, String descripcion, String duracion) throws SQLException {
         final String sql = "{call sp_modificar_curso(?, ?, ?, ?, ?, ?)}";
-        try (Connection conn = ConexionBD.obtenerConexion();
-             CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setInt(1, id);
-            cs.setString(2, emoji);
-            cs.setString(3, titulo);
-            cs.setString(4, descripcion);
-            cs.setString(5, duracion);
-            cs.registerOutParameter(6, Types.TINYINT);
-            cs.execute();
-            return cs.getInt(6) > 0;
+        // La conexión se resuelve antes que el CallableStatement (no en el mismo try-with-resources)
+        // porque resolverIdImagen() necesita esa misma conexión ya abierta: ConexionBD comparte una
+        // única Connection estática, así que abrir un DAO aparte para eso la cerraría de golpe.
+        try (Connection conn = ConexionBD.obtenerConexion()) {
+            Integer idImagen = resolverIdImagen(conn, icono);
+            try (CallableStatement cs = conn.prepareCall(sql)) {
+                cs.setInt(1, id);
+                if (idImagen == null) cs.setNull(2, Types.INTEGER); else cs.setInt(2, idImagen);
+                cs.setString(3, titulo);
+                cs.setString(4, descripcion);
+                cs.setString(5, duracion);
+                cs.registerOutParameter(6, Types.TINYINT);
+                cs.execute();
+                return cs.getInt(6) > 0;
+            }
         }
     }
 
@@ -77,14 +84,15 @@ public class AdminCursoDAOJdbc implements AdminCursoDAO {
     }
 
     @Override
-    public int guardarCursoCompleto(String emoji, String titulo, String descripcion, String duracion,
+    public int guardarCursoCompleto(SeleccionIcono icono, String titulo, String descripcion, String duracion,
                                      List<ItemPlanEstudio> items, List<PreguntaTest> preguntas) throws SQLException {
         try (Connection conn = ConexionBD.obtenerConexion()) {
             conn.setAutoCommit(false);
             try {
+                Integer idImagen = resolverIdImagen(conn, icono);
                 int idCurso;
                 try (CallableStatement cs = conn.prepareCall("{call sp_crear_curso(?, ?, ?, ?, ?)}")) {
-                    cs.setString(1, emoji);
+                    if (idImagen == null) cs.setNull(1, Types.INTEGER); else cs.setInt(1, idImagen);
                     cs.setString(2, titulo);
                     cs.setString(3, descripcion);
                     cs.setString(4, duracion);
@@ -152,6 +160,105 @@ public class AdminCursoDAOJdbc implements AdminCursoDAO {
         }
     }
 
+    @Override
+    public List<ItemPlanEstudio> listarPlanEstudio(int cursoId) throws SQLException {
+        List<ItemPlanEstudio> items = new ArrayList<>();
+        final String sql = "{call sp_listar_contenidos_curso(?)}";
+        try (Connection conn = ConexionBD.obtenerConexion();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setInt(1, cursoId);
+            try (ResultSet rs = cs.executeQuery()) {
+                // El procedure no filtra por activo (lo usa también el lado alumno tal cual):
+                // se filtra acá para que las bajas lógicas del admin desaparezcan de su propio listado.
+                while (rs.next()) {
+                    if (!rs.getBoolean("activo")) continue;
+                    items.add(new ItemPlanEstudio(rs.getInt("id"), rs.getInt("orden"), rs.getString("topico"),
+                        rs.getString("contenido"), rs.getString("ejercicio_propuesto"),
+                        rs.getString("respuesta_esperada"), true));
+                }
+            }
+        }
+        return items;
+    }
+
+    @Override
+    public int agregarItemPlan(int cursoId, int orden, String topico, String contenido,
+                                String ejercicioPropuesto, String respuestaEsperada) throws SQLException {
+        final String sql = "{call sp_crear_leccion(?, ?, ?, ?, ?, ?, ?)}";
+        try (Connection conn = ConexionBD.obtenerConexion();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setInt(1, cursoId);
+            cs.setInt(2, orden);
+            cs.setString(3, topico);
+            cs.setString(4, contenido);
+            if (ejercicioPropuesto == null) {
+                cs.setNull(5, Types.LONGVARCHAR);
+                cs.setNull(6, Types.VARCHAR);
+            } else {
+                cs.setString(5, ejercicioPropuesto);
+                cs.setString(6, respuestaEsperada);
+            }
+            cs.registerOutParameter(7, Types.INTEGER);
+            cs.execute();
+            return cs.getInt(7);
+        }
+    }
+
+    @Override
+    public boolean modificarItemPlan(int leccionId, String topico, String contenido) throws SQLException {
+        final String sql = "{call sp_modificar_leccion(?, ?, ?, ?)}";
+        try (Connection conn = ConexionBD.obtenerConexion();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setInt(1, leccionId);
+            cs.setString(2, topico);
+            cs.setString(3, contenido);
+            cs.registerOutParameter(4, Types.TINYINT);
+            cs.execute();
+            return cs.getInt(4) > 0;
+        }
+    }
+
+    @Override
+    public boolean eliminarItemPlan(int leccionId) throws SQLException {
+        return ejecutarCambioEstado("{call sp_desactivar_leccion(?, ?)}", leccionId);
+    }
+
+    @Override
+    public void reordenarPlan(List<ItemPlanEstudio> itemsEnOrden) throws SQLException {
+        try (Connection conn = ConexionBD.obtenerConexion()) {
+            conn.setAutoCommit(false);
+            try {
+                // curso_contenidos tiene UNIQUE(curso_id, orden): si dos ítems necesitan
+                // intercambiar posición, actualizarlos directo a sus valores finales puede
+                // chocar a mitad de camino (ambos con el mismo orden por un instante dentro de
+                // la misma transacción). Por eso primero se pasan todos a negativos (que nunca
+                // pueden repetir un orden real, siempre positivo) y recién después a los
+                // definitivos — el clásico truco de dos fases para el "swap" con UNIQUE.
+                for (int i = 0; i < itemsEnOrden.size(); i++) {
+                    actualizarOrden(conn, itemsEnOrden.get(i).getId(), -(i + 1));
+                }
+                for (int i = 0; i < itemsEnOrden.size(); i++) {
+                    actualizarOrden(conn, itemsEnOrden.get(i).getId(), i + 1);
+                }
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    private static void actualizarOrden(Connection conn, int leccionId, int orden) throws SQLException {
+        try (CallableStatement cs = conn.prepareCall("{call sp_modificar_orden_leccion(?, ?, ?)}")) {
+            cs.setInt(1, leccionId);
+            cs.setInt(2, orden);
+            cs.registerOutParameter(3, Types.TINYINT);
+            cs.execute();
+        }
+    }
+
     private boolean ejecutarCambioEstado(String sql, int id) throws SQLException {
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
@@ -162,8 +269,40 @@ public class AdminCursoDAOJdbc implements AdminCursoDAO {
         }
     }
 
+    /**
+     * Resuelve una {@link SeleccionIcono} al {@code id_imagen} que esperan
+     * {@code sp_crear_curso}/{@code sp_modificar_curso}. Recibe la conexión ya abierta del
+     * llamador en vez de abrir la propia — ver el comentario en {@link #modificarCurso}.
+     * Si es un archivo recién subido, lo inserta en {@code imagenes} con una clave generada
+     * (así una edición posterior que no toque el ícono puede re-resolverlo por esa misma clave,
+     * en vez de insertar una fila nueva cada vez que se guarda el curso).
+     * @return null si no hay ícono elegido
+     */
+    private static Integer resolverIdImagen(Connection conn, SeleccionIcono icono) throws SQLException {
+        if (icono == null || icono.esNinguno()) return null;
+
+        if (icono.esArchivoSubido()) {
+            String claveGenerada = "custom_" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+            try (CallableStatement cs = conn.prepareCall("{call sp_crear_imagen(?, ?, ?)}")) {
+                cs.setBytes(1, icono.getDatos());
+                cs.setString(2, claveGenerada);
+                cs.registerOutParameter(3, Types.INTEGER);
+                cs.execute();
+                return cs.getInt(3);
+            }
+        }
+
+        try (CallableStatement cs = conn.prepareCall("{call sp_obtener_imagen_por_clave(?)}")) {
+            cs.setString(1, icono.getClave());
+            try (ResultSet rs = cs.executeQuery()) {
+                if (!rs.next()) throw new SQLException("No existe una imagen con clave '" + icono.getClave() + "'.");
+                return rs.getInt("id_imagen");
+            }
+        }
+    }
+
     private CursoAdmin mapearFila(ResultSet rs) throws SQLException {
-        return new CursoAdmin(rs.getInt("id"), rs.getString("emoji"), rs.getString("titulo"),
+        return new CursoAdmin(rs.getInt("id"), rs.getBytes("emoji_datos"), rs.getString("emoji_clave"), rs.getString("titulo"),
             rs.getString("descripcion"), rs.getString("duracion"), rs.getBoolean("activo"));
     }
 }

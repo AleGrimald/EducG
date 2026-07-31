@@ -61,13 +61,6 @@ public class VentanaMisDatos extends VentanaBase {
 
         bloqueTitulo.add(appLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
-        botonVolver.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaPanelUsuario(emailUsuario).setVisible(true);
-        });
-
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
@@ -77,7 +70,6 @@ public class VentanaMisDatos extends VentanaBase {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonVolver);
         botones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);

@@ -17,7 +17,7 @@ public final class IconoVectorial {
         AGREGAR("agregar.png"), BUSCAR("busqueda.png"), LISTA("menu-hamburguesa.png"),
         VOLVER("flecha-pequena-izquierda.png"), ANTERIOR("angulo-izquierdo.png"),
         SIGUIENTE("angulo-derecho.png"), INICIO("hogar.png"), USUARIO("usuario.png"),
-        SALIR(null), GUARDAR(null), CANCELAR(null), QUITAR(null);
+        SALIR(null), GUARDAR(null), CANCELAR(null), QUITAR(null), VER(null), SUBIR(null), ARRASTRAR(null);
 
         private final String archivoPng;
         Tipo(String archivoPng) { this.archivoPng = archivoPng; }
@@ -56,6 +56,9 @@ public final class IconoVectorial {
             case GUARDAR:    dibujarCheck(g2, x, y, size); break;
             case CANCELAR:   dibujarX(g2, x, y, size); break;
             case QUITAR:     dibujarQuitar(g2, x, y, size); break;
+            case VER:        dibujarVer(g2, x, y, size); break;
+            case SUBIR:      dibujarSubir(g2, x, y, size); break;
+            case ARRASTRAR:  dibujarArrastrar(g2, x, y, size); break;
         }
         g2.dispose();
     }
@@ -217,5 +220,39 @@ public final class IconoVectorial {
         float d = s * 0.62f;
         g2.draw(new Ellipse2D.Float(x + (s - d) / 2f, y + (s - d) / 2f, d, d));
         g2.draw(new Line2D.Float(x + s * 0.34f, y + s * 0.5f, x + s * 0.66f, y + s * 0.5f));
+    }
+
+    /** Ojo (párpado + pupila), para acciones de "ver"/vista previa de solo lectura. */
+    private static void dibujarVer(Graphics2D g2, int x, int y, int s) {
+        Path2D parpado = new Path2D.Float();
+        parpado.moveTo(x + s * 0.10f, y + s * 0.5f);
+        parpado.curveTo(x + s * 0.28f, y + s * 0.22f, x + s * 0.72f, y + s * 0.22f, x + s * 0.90f, y + s * 0.5f);
+        parpado.curveTo(x + s * 0.72f, y + s * 0.78f, x + s * 0.28f, y + s * 0.78f, x + s * 0.10f, y + s * 0.5f);
+        g2.draw(parpado);
+        float d = s * 0.20f;
+        g2.fill(new Ellipse2D.Float(x + (s - d) / 2f, y + (s - d) / 2f, d, d));
+    }
+
+    /** Flecha hacia arriba sobre una base, para "subir un archivo". */
+    private static void dibujarSubir(Graphics2D g2, int x, int y, int s) {
+        g2.draw(new Line2D.Float(x + s * 0.5f, y + s * 0.78f, x + s * 0.5f, y + s * 0.24f));
+        Path2D punta = new Path2D.Float();
+        punta.moveTo(x + s * 0.28f, y + s * 0.46f);
+        punta.lineTo(x + s * 0.5f, y + s * 0.24f);
+        punta.lineTo(x + s * 0.72f, y + s * 0.46f);
+        g2.draw(punta);
+        g2.draw(new Line2D.Float(x + s * 0.18f, y + s * 0.88f, x + s * 0.82f, y + s * 0.88f));
+    }
+
+    /** Grilla de 6 puntos (2x3), el clásico "grip" para agarrar y arrastrar una fila. */
+    private static void dibujarArrastrar(Graphics2D g2, int x, int y, int s) {
+        float d = s * 0.14f;
+        float[] xs = {s * 0.32f, s * 0.68f};
+        float[] ys = {s * 0.24f, s * 0.5f, s * 0.76f};
+        for (float cx : xs) {
+            for (float cy : ys) {
+                g2.fill(new Ellipse2D.Float(x + cx - d / 2f, y + cy - d / 2f, d, d));
+            }
+        }
     }
 }

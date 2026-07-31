@@ -5,6 +5,7 @@ import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.Inscripcion;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoCurso;
 import vista.componentes.IconoVectorial;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -15,8 +16,6 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -66,13 +65,6 @@ public class VentanaMisCursos extends VentanaBase {
 
         bloqueTitulo.add(appLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
-        botonVolver.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaPanelUsuario(emailUsuario).setVisible(true);
-        });
-
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
@@ -82,7 +74,6 @@ public class VentanaMisCursos extends VentanaBase {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonVolver);
         botones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
@@ -191,7 +182,6 @@ public class VentanaMisCursos extends VentanaBase {
     private JPanel construirFilaCurso(Inscripcion inscripcion) throws SQLException {
         String cursoTitulo = inscripcion.getCursoTitulo();
         Curso curso = controlador.buscarCurso(cursoTitulo);
-        String emoji = (curso != null) ? curso.getEmoji() : "📘";
 
         JPanel fila = new JPanel(new BorderLayout(12, 0)) {
             @Override protected void paintComponent(Graphics g) {
@@ -213,7 +203,7 @@ public class VentanaMisCursos extends VentanaBase {
         info.setOpaque(false);
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
 
-        JLabel tituloLbl = new JLabel(emoji + "  " + cursoTitulo);
+        JLabel tituloLbl = new JLabel(cursoTitulo);
         tituloLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
 
@@ -265,6 +255,8 @@ public class VentanaMisCursos extends VentanaBase {
         botones.add(botonIngresar);
         botones.add(botonBaja);
 
+        JLabel iconoLbl = IconoCurso.crearEtiqueta(curso != null ? curso.getEmoji() : null, cursoTitulo, 44);
+        fila.add(iconoLbl, BorderLayout.WEST);
         fila.add(info, BorderLayout.CENTER);
         fila.add(botones, BorderLayout.EAST);
         return fila;

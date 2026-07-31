@@ -4,6 +4,7 @@ import dao.AdminCursoDAOJdbc;
 import modelo.ItemPlanEstudio;
 import modelo.OpcionTest;
 import modelo.PreguntaTest;
+import modelo.SeleccionIcono;
 import servicio.ServicioAdminCursos;
 
 import java.sql.SQLException;
@@ -19,7 +20,7 @@ public class ControladorCrearCurso {
 
     private final ServicioAdminCursos servicio = new ServicioAdminCursos(new AdminCursoDAOJdbc());
 
-    private String emoji = "";
+    private SeleccionIcono icono = SeleccionIcono.ninguno();
     private String titulo = "";
     private String descripcion = "";
     private String duracion = "";
@@ -28,15 +29,15 @@ public class ControladorCrearCurso {
 
     // ── Paso 1: datos básicos + plan de estudio ─────────────────────────────
 
-    public void establecerDatosBasicos(String emoji, String titulo, String descripcion, String duracion) {
-        ControladorAdminCursos.validarDatosBasicos(emoji, titulo, descripcion, duracion);
-        this.emoji = emoji;
+    public void establecerDatosBasicos(SeleccionIcono icono, String titulo, String descripcion, String duracion) {
+        ControladorAdminCursos.validarDatosBasicos(icono, titulo, descripcion, duracion);
+        this.icono = icono;
         this.titulo = titulo;
         this.descripcion = descripcion;
         this.duracion = duracion;
     }
 
-    public String getEmoji()       { return emoji; }
+    public SeleccionIcono getIcono() { return icono; }
     public String getTitulo()      { return titulo; }
     public String getDescripcion() { return descripcion; }
     public String getDuracion()    { return duracion; }
@@ -126,7 +127,7 @@ public class ControladorCrearCurso {
         validarPaso2();
         validarPaso3();
         validarPaso4();
-        int id = servicio.guardarCursoCompleto(emoji, titulo, descripcion, duracion, items, preguntas);
+        int id = servicio.guardarCursoCompleto(icono, titulo, descripcion, duracion, items, preguntas);
         if (id == -1) throw new IllegalArgumentException("Ya existe un curso con el título \"" + titulo + "\".");
         return id;
     }

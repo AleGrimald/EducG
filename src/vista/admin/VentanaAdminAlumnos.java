@@ -17,6 +17,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,8 +62,18 @@ public class VentanaAdminAlumnos extends VentanaBase {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.setBorder(new EmptyBorder(0, 20, 20, 20));
+        wrapper.add(construirTituloSeccion("Alumnos"), BorderLayout.NORTH);
         wrapper.add(contenido, BorderLayout.CENTER);
         raiz.add(wrapper, BorderLayout.CENTER);
+    }
+
+    private JLabel construirTituloSeccion(String texto) {
+        JLabel tituloSeccion = new JLabel(texto);
+        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        tituloSeccion.setForeground(Color.WHITE);
+        tituloSeccion.setBorder(new EmptyBorder(20, 24, 12, 24));
+        tituloSeccion.setOpaque(false);
+        return tituloSeccion;
     }
 
     private JPanel construirEncabezado() {
@@ -79,13 +91,6 @@ public class VentanaAdminAlumnos extends VentanaBase {
 
         bloqueTitulo.add(appLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
-        botonVolver.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaAdmin(emailAdmin).setVisible(true);
-        });
-
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
@@ -95,12 +100,70 @@ public class VentanaAdminAlumnos extends VentanaBase {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonVolver);
         botones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(botones, BorderLayout.EAST);
+
+        // ── Pestañas de navegación ─────────────────────────────────────────
+        JPanel pestanas = crearPestanas();
+        encabezado.add(pestanas, BorderLayout.SOUTH);
         return encabezado;
+    }
+
+    private JPanel crearPestanas() {
+        JPanel pestanas = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pestanas.setOpaque(false);
+        pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        String[] labels = {"Alumnos", "Cursos", "Estadísticas"};
+        Runnable[] acciones = {
+            () -> {},
+            () -> abrirVentana(new VentanaAdminCursos(emailAdmin)),
+            () -> abrirVentana(new VentanaAdminEstadisticas(emailAdmin))
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            JLabel pestaña = crearPestaña(labels[i], i == 0);
+            final int index = i;
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) {
+                    if (index == 0) return;
+                    if (!iniciarTransicionUnica()) return;
+                    dispose();
+                    acciones[index].run();
+                }
+            });
+            pestanas.add(pestaña);
+        }
+
+        return pestanas;
+    }
+
+    private JLabel crearPestaña(String texto, boolean activa) {
+        JLabel pestaña = new JLabel(texto);
+        pestaña.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pestaña.setForeground(activa ? new Color(37, 99, 235) : new Color(80, 100, 130));
+        pestaña.setBorder(new EmptyBorder(6, 14, 6, 14));
+        pestaña.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pestaña.setOpaque(false);
+
+        if (!activa) {
+            pestaña.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) {
+                    pestaña.setForeground(new Color(37, 99, 235));
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    pestaña.setForeground(new Color(80, 100, 130));
+                }
+            });
+        }
+
+        return pestaña;
+    }
+
+    private void abrirVentana(VentanaBase ventana) {
+        ventana.setVisible(true);
     }
 
     private JPanel construirBarraSuperior() {
@@ -145,6 +208,9 @@ public class VentanaAdminAlumnos extends VentanaBase {
         // Ancho fijo por columna (ver fijarAnchoColumnas): que el ancho de la ventana
         // no achique/estire las columnas de datos, a diferencia del auto-resize por defecto.
         tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        // Sin esto, el viewport pinta gris por debajo de las filas cuando hay pocos
+        // registros (JTable.getPreferredScrollableViewportSize() por defecto es 450x400).
+        tabla.setFillsViewportHeight(true);
 
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setBorder(BorderFactory.createLineBorder(EstiloUI.BORDE, 1));

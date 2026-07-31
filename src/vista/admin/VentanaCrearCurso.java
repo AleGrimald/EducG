@@ -8,6 +8,7 @@ import vista.VentanaBase;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.IconoVectorial;
 import vista.componentes.PanelDesplegable;
+import vista.componentes.SelectorIconoCurso;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -40,7 +41,7 @@ public class VentanaCrearCurso extends VentanaBase {
     private JButton botonSiguiente;
 
     // Paso 1
-    private JTextField campoEmoji;
+    private SelectorIconoCurso campoEmoji;
     private JTextField campoTitulo;
     private JTextArea campoDescripcion;
     private JTextField campoDuracion;
@@ -177,7 +178,7 @@ public class VentanaCrearCurso extends VentanaBase {
         try {
             switch (pasoActual) {
                 case 1:
-                    controlador.establecerDatosBasicos(campoEmoji.getText().trim(), campoTitulo.getText().trim(),
+                    controlador.establecerDatosBasicos(campoEmoji.getSeleccion(), campoTitulo.getText().trim(),
                         campoDescripcion.getText().trim(), campoDuracion.getText().trim());
                     controlador.validarPaso1();
                     irAPaso(2);
@@ -254,7 +255,7 @@ public class VentanaCrearCurso extends VentanaBase {
         gbc.insets = new Insets(0, 0, 12, 12);
 
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.15;
-        filaDatos.add(bloqueCampo("Emoji", campoEmoji = FabricaUI.crearCampo()), gbc);
+        filaDatos.add(bloqueCampo("Ícono", campoEmoji = new SelectorIconoCurso(this)), gbc);
         gbc.gridx = 1; gbc.weightx = 0.5;
         filaDatos.add(bloqueCampo("Título", campoTitulo = FabricaUI.crearCampo()), gbc);
         gbc.gridx = 2; gbc.weightx = 0.35; gbc.insets = new Insets(0, 0, 12, 0);
@@ -277,7 +278,7 @@ public class VentanaCrearCurso extends VentanaBase {
         scrollDesc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
         panel.add(scrollDesc);
 
-        campoEmoji.setText(controlador.getEmoji());
+        campoEmoji.establecerSeleccion(controlador.getIcono());
         campoTitulo.setText(controlador.getTitulo());
         campoDescripcion.setText(controlador.getDescripcion());
         campoDuracion.setText(controlador.getDuracion());

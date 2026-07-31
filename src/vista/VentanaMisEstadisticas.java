@@ -14,8 +14,6 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,13 +63,6 @@ public class VentanaMisEstadisticas extends VentanaBase {
 
         bloqueTitulo.add(appLbl);
 
-        JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver al Panel", IconoVectorial.Tipo.INICIO);
-        botonVolver.addActionListener(e -> {
-            if (!iniciarTransicionUnica()) return;
-            dispose();
-            new VentanaPanelUsuario(emailUsuario).setVisible(true);
-        });
-
         JButton botonCerrarSesion = FabricaUI.crearBotonSecundarioPequeno("Cerrar Sesión", IconoVectorial.Tipo.SALIR);
         botonCerrarSesion.addActionListener(e -> {
             if (!iniciarTransicionUnica()) return;
@@ -81,7 +72,6 @@ public class VentanaMisEstadisticas extends VentanaBase {
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botones.setOpaque(false);
-        botones.add(botonVolver);
         botones.add(botonCerrarSesion);
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
@@ -94,10 +84,18 @@ public class VentanaMisEstadisticas extends VentanaBase {
     }
 
     private JScrollPane construirPanelEstadisticas() {
+        // Título de la sección
+        JLabel tituloSeccion = new JLabel("Estadísticas");
+        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        tituloSeccion.setForeground(Color.WHITE);
+        tituloSeccion.setBorder(new EmptyBorder(24, 32, 16, 32));
+        tituloSeccion.setOpaque(false);
+
+        // Panel principal de contenido
         JPanel contenido = new JPanel();
         contenido.setBackground(new Color(245, 248, 252));
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
-        contenido.setBorder(new EmptyBorder(20, 24, 20, 24));
+        contenido.setBorder(new EmptyBorder(24, 40, 24, 40));
 
         EstadisticasUsuario estadisticas = new EstadisticasUsuario(0, 0, 0);
         List<ResultadoTest> resultadosTests = new ArrayList<>();
@@ -147,15 +145,61 @@ public class VentanaMisEstadisticas extends VentanaBase {
             tabla.setSelectionBackground(new Color(220, 235, 255));
 
             JScrollPane scrollTabla = new JScrollPane(tabla);
-            scrollTabla.setMaximumSize(new Dimension(Integer.MAX_VALUE, 240));
+            int anchoPorDefecto = scrollTabla.getPreferredSize().width;
+            int altoHeader = tabla.getTableHeader().getPreferredSize().height;
+            int altoMaximo = 240;
+            int altoTabla = Math.min(altoHeader + tabla.getRowHeight() * resultadosTests.size(), altoMaximo);
+            scrollTabla.setPreferredSize(new Dimension(anchoPorDefecto, altoTabla));
+            scrollTabla.setMinimumSize(new Dimension(0, altoTabla));
+            scrollTabla.setMaximumSize(new Dimension(Integer.MAX_VALUE, altoTabla));
             scrollTabla.setAlignmentX(LEFT_ALIGNMENT);
             scrollTabla.setBorder(BorderFactory.createLineBorder(EstiloUI.BORDE, 1));
             contenido.add(scrollTabla);
         }
 
         contenido.add(Box.createVerticalGlue());
-        JScrollPane scroll = new JScrollPane(contenido);
+
+        // Panel con título + contenido
+        JPanel panelConTitulo = new JPanel(new BorderLayout());
+        panelConTitulo.setOpaque(false);
+        panelConTitulo.add(tituloSeccion, BorderLayout.NORTH);
+        panelConTitulo.add(contenido, BorderLayout.CENTER);
+
+        // Envolver en contenedor centrado: 22.5% glue - 55% contenido - 22.5% glue
+        JPanel contenedorCentrado = new JPanel(new GridBagLayout());
+        contenedorCentrado.setOpaque(false);
+        contenedorCentrado.setBorder(new EmptyBorder(24, 32, 26, 32));
+
+        // Panel glue izquierda
+        JPanel glueIzq = new JPanel();
+        glueIzq.setOpaque(false);
+        GridBagConstraints gbcIzq = new GridBagConstraints();
+        gbcIzq.weightx = 0.225;
+        gbcIzq.weighty = 1;
+        gbcIzq.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(glueIzq, gbcIzq);
+
+        // Contenido
+        GridBagConstraints gbcContenido = new GridBagConstraints();
+        gbcContenido.weightx = 0.55;
+        gbcContenido.weighty = 1;
+        gbcContenido.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(panelConTitulo, gbcContenido);
+
+        // Panel glue derecha
+        JPanel glueDer = new JPanel();
+        glueDer.setOpaque(false);
+        GridBagConstraints gbcDer = new GridBagConstraints();
+        gbcDer.weightx = 0.225;
+        gbcDer.weighty = 1;
+        gbcDer.fill = GridBagConstraints.BOTH;
+        contenedorCentrado.add(glueDer, gbcDer);
+
+        JScrollPane scroll = new JScrollPane(contenedorCentrado);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setViewportBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         return scroll;
     }
