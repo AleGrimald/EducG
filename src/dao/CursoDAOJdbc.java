@@ -24,7 +24,7 @@ public class CursoDAOJdbc implements CursoDAO {
             try (ResultSet rs = cs.executeQuery()) {
                 while (rs.next()) {
                     filasBase.add(new Object[]{
-                        rs.getInt("id"), rs.getBytes("emoji_datos"), rs.getString("titulo"),
+                        rs.getInt("id"), rs.getBytes("emoji_datos"), rs.getString("emoji_clave"), rs.getString("titulo"),
                         rs.getString("descripcion"), rs.getString("duracion")
                     });
                 }
@@ -34,7 +34,7 @@ public class CursoDAOJdbc implements CursoDAO {
         List<Curso> cursos = new ArrayList<>();
         for (Object[] fila : filasBase) {
             int id = (int) fila[0];
-            cursos.add(new Curso(id, (byte[]) fila[1], (String) fila[2], (String) fila[3], (String) fila[4], listarLecciones(id)));
+            cursos.add(new Curso(id, (byte[]) fila[1], (String) fila[2], (String) fila[3], (String) fila[4], (String) fila[5], listarLecciones(id)));
         }
         return cursos;
     }

@@ -443,6 +443,22 @@ Each window is a `JFrame` (via `VentanaBase`). Navigation uses `setVisible(true/
 2. Add the provider's default model id to `ConfiguracionChatbot.modeloPorDefecto(...)` if it isn't already there
 3. Nothing else changes — `FabricaMotorChatbot` already routes to it once `CHATBOT_PROVEEDOR` in `.env` matches the provider name; `ServicioChatbot`/`ControladorChatbot`/the vista layer are provider-agnostic
 
+### Recover corrupted images in the DB
+
+If the `imagenes` table gets corrupted (PNGs damaged or data loss), restore from `assets/`:
+
+```bash
+cd C:\Users\grima\Desktop\Ale\EducG
+javac -cp "lib/mysql-connector-j-8.3.0.jar" util/CargarImagenes.java
+java -cp ".;lib/mysql-connector-j-8.3.0.jar" util.CargarImagenes
+```
+
+**How to avoid:**
+- Preset images (`icono_python`, `icono_java`, etc.) are stored in `assets/` — the app has a fallback to load them from there if DB fails (see `IconoCurso.java`)
+- Only custom course images (user-uploaded) are stored in `imagenes` — presets should never be stored there
+- If icons aren't loading, `IconoCurso.crearEtiqueta()` tries: BD bytes → assets fallback → initial placeholder
+- Regular backups of `educg_db.sql` (via `mysqldump --routines --databases educg_db`) protect against data loss
+
 ## Security Notes
 
 - Passwords: SHA-256 + random 16-byte salt, stored as `saltHex:hashHex` (`servicio.HasheadorPassword`)

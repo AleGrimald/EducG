@@ -44,6 +44,12 @@ public class VentanaContenidoCurso extends VentanaBase {
         this.nombreUsuario = nombreUsuario;
         this.alVolver = alVolver;
         this.pasos = construirPasos();
+
+        if (pasos.isEmpty()) {
+            construirUIVacio();
+            return;
+        }
+
         cargarProgreso();
         construirUI();
         FabricaUI.establecerIconoVentana(this);
@@ -89,6 +95,50 @@ public class VentanaContenidoCurso extends VentanaBase {
         }
     }
 
+    private void construirUIVacio() {
+        JPanel raiz = FabricaUI.crearFondoEstandar();
+        raiz.setLayout(new BorderLayout());
+        setContentPane(raiz);
+
+        JPanel contenedor = new JPanel();
+        contenedor.setOpaque(false);
+        contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
+        contenedor.setAlignmentX(CENTER_ALIGNMENT);
+        contenedor.setAlignmentY(CENTER_ALIGNMENT);
+
+        JLabel titulo = new JLabel("Este curso no tiene contenido disponible");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titulo.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        titulo.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel detalle = new JLabel("Por favor, volvé a la lista de cursos");
+        detalle.setFont(EstiloUI.FUENTE_PEQUENA);
+        detalle.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+        detalle.setAlignmentX(CENTER_ALIGNMENT);
+
+        JButton botonVolver = FabricaUI.crearBotonPrimario("Volver");
+        botonVolver.setMaximumSize(new Dimension(200, EstiloUI.ALTO_BOTON));
+        botonVolver.setAlignmentX(CENTER_ALIGNMENT);
+        botonVolver.addActionListener(e -> {
+            dispose();
+            alVolver.run();
+        });
+
+        contenedor.add(Box.createVerticalGlue());
+        contenedor.add(titulo);
+        contenedor.add(Box.createVerticalStrut(12));
+        contenedor.add(detalle);
+        contenedor.add(Box.createVerticalStrut(24));
+        contenedor.add(botonVolver);
+        contenedor.add(Box.createVerticalGlue());
+
+        raiz.add(contenedor, BorderLayout.CENTER);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(800, 600);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
     private void construirUI() {
         JPanel raiz = FabricaUI.crearFondoEstandar();
         raiz.setLayout(new BorderLayout());
@@ -103,7 +153,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(new Color(36, 91, 168, 221));
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -119,13 +169,13 @@ public class VentanaContenidoCurso extends VentanaBase {
         tituloLbl.setForeground(Color.WHITE);
         filaTitulo.add(tituloLbl);
 
-        JLabel duracionLbl = new JLabel("⏱ " + curso.getDuracion() + "  ·  " + curso.getDescripcion());
-        duracionLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        duracionLbl.setForeground(new Color(200, 220, 255));
+        //JLabel duracionLbl = new JLabel("⏱ " + curso.getDuracion() + "  ·  " + curso.getDescripcion());
+        //duracionLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
+        //duracionLbl.setForeground(new Color(200, 220, 255));
 
         bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
-        bloqueTitulo.add(duracionLbl);
+        //bloqueTitulo.add(duracionLbl);
 
         JButton botonVolver = FabricaUI.crearBotonSecundarioPequeno("Volver", IconoVectorial.Tipo.VOLVER);
         botonVolver.addActionListener(e -> {
@@ -191,7 +241,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         bloque.add(tituloLeccion);
         bloque.add(Box.createVerticalStrut(14));
 
-        bloque.add(construirCajaTexto(leccion.getContenido()));
+        bloque.add(construirCajaTexto(leccion.getContenido(), false));
         return bloque;
     }
 
@@ -215,7 +265,7 @@ public class VentanaContenidoCurso extends VentanaBase {
         bloque.add(tituloEjercicio);
         bloque.add(Box.createVerticalStrut(14));
 
-        bloque.add(construirCajaTexto(leccion.getEjercicioPropuesto()));
+        bloque.add(construirCajaTexto(leccion.getEjercicioPropuesto(), true));
         bloque.add(Box.createVerticalStrut(20));
 
         boolean resuelto = ejerciciosResueltos.contains(paso.leccionIndex);
@@ -243,17 +293,31 @@ public class VentanaContenidoCurso extends VentanaBase {
         panel.add(etiqueta);
         panel.add(Box.createVerticalStrut(6));
 
-        JPanel filaRespuesta = new JPanel(new BorderLayout(10, 0));
-        filaRespuesta.setOpaque(false);
-        filaRespuesta.setAlignmentX(LEFT_ALIGNMENT);
-        filaRespuesta.setMaximumSize(new Dimension(600, EstiloUI.ALTO_CAMPO));
+        JTextArea campoRespuesta = new JTextArea(6, 40);
+        campoRespuesta.setFont(EstiloUI.FUENTE_CUERPO);
+        campoRespuesta.setLineWrap(true);
+        campoRespuesta.setWrapStyleWord(true);
+        campoRespuesta.setBackground(EstiloUI.FONDO_CAMPO);
+        campoRespuesta.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        campoRespuesta.setBorder(new javax.swing.border.EmptyBorder(8, 8, 8, 8));
 
-        JTextField campoRespuesta = FabricaUI.crearCampo();
+        JScrollPane scrollRespuesta = new JScrollPane(campoRespuesta);
+        scrollRespuesta.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+        scrollRespuesta.setOpaque(false);
+        scrollRespuesta.setAlignmentX(LEFT_ALIGNMENT);
+        scrollRespuesta.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+
         JButton botonVerificar = FabricaUI.crearBotonPrimario("Verificar", IconoVectorial.Tipo.GUARDAR);
+        botonVerificar.setAlignmentX(LEFT_ALIGNMENT);
 
-        filaRespuesta.add(campoRespuesta, BorderLayout.CENTER);
-        filaRespuesta.add(botonVerificar, BorderLayout.EAST);
-        panel.add(filaRespuesta);
+        panel.add(scrollRespuesta);
+        panel.add(Box.createVerticalStrut(8));
+
+        JPanel filaBoton = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        filaBoton.setOpaque(false);
+        filaBoton.setAlignmentX(LEFT_ALIGNMENT);
+        filaBoton.add(botonVerificar);
+        panel.add(filaBoton);
 
         panel.add(Box.createVerticalStrut(8));
         JLabel feedbackLbl = new JLabel(" ");
@@ -273,16 +337,36 @@ public class VentanaContenidoCurso extends VentanaBase {
             }
         };
         botonVerificar.addActionListener(e -> verificar.run());
-        campoRespuesta.addActionListener(e -> verificar.run());
 
         return panel;
     }
 
-    private JScrollPane construirCajaTexto(String textoHtml) {
-        JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + textoHtml + "</body></html>");
-        contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+    private JScrollPane construirCajaTexto(String html, boolean esEjercicio) {
+        JEditorPane contenidoLbl = new JEditorPane("text/html", "<html><head><meta charset=\"UTF-8\"><style>" +
+            "body { font-family: Segoe UI, Arial; font-size: 14px; color: #7F8C8D; line-height: 1.6; margin: 0; word-wrap: break-word; }" +
+            "h1, h2, h3 { color: #1E0550; margin: 15px 0 10px 0; }" +
+            "code { background-color: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New'; }" +
+            "pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; border-left: 3px solid #1E0550; }" +
+            "pre code { background-color: transparent; padding: 0; }" +
+            "ul, ol { margin: 10px 0; padding-left: 20px; }" +
+            "table { border-collapse: collapse; width: 100%; margin: 10px 0; }" +
+            "table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }" +
+            "table th { background-color: #f4f4f4; font-weight: bold; }" +
+            "a { color: #2980B9; text-decoration: none; }" +
+            "a:hover { text-decoration: underline; }" +
+            "</style></head><body style='width: 960px; padding: 0 15px;'>" + html + "</body></html>");
+        contenidoLbl.setEditable(false);
+        contenidoLbl.setOpaque(false);
         contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
-        contenidoLbl.setVerticalAlignment(SwingConstants.TOP);
+        contenidoLbl.addHyperlinkListener(e -> {
+            if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+                try {
+                    java.awt.Desktop.getDesktop().browse(e.getURL().toURI());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
 
         JPanel envoltorioTexto = new JPanel(new BorderLayout());
         envoltorioTexto.setOpaque(false);
@@ -302,8 +386,8 @@ public class VentanaContenidoCurso extends VentanaBase {
         cajaTexto.getViewport().setOpaque(false);
         cajaTexto.setAlignmentX(LEFT_ALIGNMENT);
 
-        int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.4);
-        Dimension tamanoCaja = new Dimension(748, alturaCaja);
+        int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.55);
+        Dimension tamanoCaja = new Dimension(980, alturaCaja);
         cajaTexto.setPreferredSize(tamanoCaja);
         cajaTexto.setMinimumSize(tamanoCaja);
         cajaTexto.setMaximumSize(tamanoCaja);
