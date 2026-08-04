@@ -88,6 +88,7 @@ separados; para reconstruir la base desde cero alcanza con correr ese único arc
 | **test_opciones** | Multiple-choice options per question | pregunta_id (FK), texto, es_correcta, orden |
 | **test_respuestas_usuario** | Which option the user picked, per attempt | test_resultado_id (FK), pregunta_id (FK), opcion_elegida_id (FK), es_correcta |
 | **certificados** | Certificado emitido (uno por usuario+curso, `INSERT IGNORE` desde `sp_alta_resultado_test` al aprobar) | usuario_id (FK), curso_id (FK), test_resultado_id (FK), puntaje, fecha_emision |
+| **codigos_verificacion** | Códigos de 6 caracteres para verificación de email post-registro | id (PK), dni (BIGINT, no FK), codigo (VARCHAR(6)), fecha_generacion, fecha_expiracion |
 | **auditoria_cambios** | Log de cambios para futuras auditorías del panel admin (no usada por el código Java todavía) | usuario_admin_id (FK, SET NULL), tabla_afectada, registro_id, accion, datos_anteriores/datos_nuevos (JSON), fecha, ip_origen |
 
 No hay columna `rol`: el rol de administrador es el booleano `usuarios.es_admin`
@@ -193,12 +194,21 @@ DB_DATABASE=educg_db
 DB_USER=root
 DB_PASSWORD=<your_password>
 
+# Verificación de cuenta por email (Gmail SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<tu_email_de_gmail>
+SMTP_PASSWORD=<tu_app_password_de_gmail>
+SMTP_FROM_NOMBRE=Educ G
+
 # Chatbot flotante ("Robotito") — opcional, ver sección "Chatbot flotante"
 # Proveedores con implementación real hoy: claude | gemini (gpt/kimi son stubs)
 CHATBOT_PROVEEDOR=gemini
 CHATBOT_API_KEY=<tu_api_key_de_gemini_o_claude>
 CHATBOT_MODELO=gemini-flash-latest
 ```
+
+**Nota sobre `SMTP_PASSWORD`:** Debe ser un **App Password** de Gmail (16 caracteres generados desde la configuración de seguridad de tu cuenta Google con verificación en 2 pasos activada). Gmail no acepta la contraseña normal de la cuenta para SMTP AUTH.
 
 `ConexionBD` (paquete `bd`) y `chatbot.ConfiguracionChatbot` comparten el mismo loader
 (`bd.CargadorEnv`), que busca `.env` en: working directory → project root → system
@@ -558,7 +568,7 @@ Dialogs automatically animate in/out and success/info dialogs auto-close after 2
 
 - **New developer checklist:** Run `mysql -u root -p < educg_db.sql` (single file — schema, all 52 procedures, and seed data), populate `.env`, ensure MySQL is on localhost:3306. `CHATBOT_API_KEY` is optional — without it the chatbot bubble still opens but shows a friendly error when you try to send a message. The dump already seeds an admin account (`admin@educg.com` — ask whoever ran the dump for the password, or update it directly: `UPDATE usuarios SET password_hash='<hash>' WHERE email='admin@educg.com';`, hash format is `HasheadorPassword`'s `saltHex:sha256Hex`).
 - **Hardcoded strings:** All UI text is in Spanish; no localization mechanism exists
-- **No background threads (except the chatbot):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. The one deliberate exception is `VentanaChatFlotante`, which uses `SwingWorker` for the HTTP call to the AI provider — that's a real external network call, not local MySQL, so blocking the EDT would freeze the window.
+- **No background threads (except the chatbot and email):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. There are two deliberate exceptions: `VentanaChatFlotante` uses `SwingWorker` for the HTTP call to the AI provider, and `VentanaVerificacionCodigo` uses `SwingWorker` for the SMTP email send — both are real external network calls (not local MySQL), so blocking the EDT would freeze the window.
 - **Test results:** `test_resultados` is now populated by `VentanaTest` (`sp_alta_resultado_test`, which also computes `aprobado` and emits a certificate row); `test_respuestas_usuario` records each individual answer per attempt.
 - **UI Consistency:** When adding new features, **always use `EstiloUI` constants** for colors, fonts, and dimensions. Breaking this rule will require refactoring.
 - **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a `CREATE PROCEDURE` directly against the running database and re-export `educg_db.sql` (`mysqldump --routines --triggers --single-transaction --add-drop-table --databases educg_db > educg_db.sql`) so the single file stays the source of truth — there's no separate incremental-migration file to edit anymore.

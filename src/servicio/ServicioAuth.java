@@ -34,7 +34,7 @@ public class ServicioAuth {
         } catch (NoSuchAlgorithmException e) {
             throw new SQLException("Error al procesar la contraseña.", e);
         }
-        int resultado = usuarioDAO.altaUsuario(email, hash, nombre, apellido, dni, telefono);
+        int resultado = usuarioDAO.altaUsuario(email, hash, nombre, apellido, dni, telefono, false);
         return resultado == 1;
     }
 }
