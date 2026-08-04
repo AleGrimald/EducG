@@ -61,4 +61,9 @@ public final class Validador {
     public static boolean esTelefonoValido(String telefono) {
         return telefono != null && TELEFONO_PATTERN.matcher(telefono).matches();
     }
+
+    /** Código de verificación: 6 caracteres en mayúsculas alfanuméricos (A-Z0-9) */
+    public static boolean esCodigoVerificacionValido(String codigo) {
+        return codigo != null && codigo.matches("^[A-Z0-9]{6}$");
+    }
 }

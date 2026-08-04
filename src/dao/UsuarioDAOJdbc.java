@@ -10,8 +10,8 @@ public class UsuarioDAOJdbc implements UsuarioDAO {
 
     @Override
     public int altaUsuario(String email, String passwordHash, String nombre, String apellido,
-                            long dni, String telefono) throws SQLException {
-        final String sql = "{call sp_alta_usuario(?, ?, ?, ?, ?, ?, ?, ?)}";
+                            long dni, String telefono, boolean activo) throws SQLException {
+        final String sql = "{call sp_alta_usuario(?, ?, ?, ?, ?, ?, ?, ?, ?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setString(1, email);
@@ -20,10 +20,11 @@ public class UsuarioDAOJdbc implements UsuarioDAO {
             cs.setString(4, apellido);
             cs.setLong(5, dni);
             cs.setString(6, telefono);
-            cs.registerOutParameter(7, Types.TINYINT);
-            cs.registerOutParameter(8, Types.INTEGER);
+            cs.setInt(7, activo ? 1 : 0);
+            cs.registerOutParameter(8, Types.TINYINT);
+            cs.registerOutParameter(9, Types.INTEGER);
             cs.execute();
-            return cs.getInt(7);
+            return cs.getInt(8);
         }
     }
 
@@ -84,6 +85,22 @@ public class UsuarioDAOJdbc implements UsuarioDAO {
             cs.execute();
             return cs.getInt(3) > 0;
         }
+    }
+
+    @Override
+    public Usuario obtenerUsuarioPorDni(long dni) throws SQLException {
+        final String sql = "{call sp_obtener_usuario_por_dni(?)}";
+        try (Connection conn = ConexionBD.obtenerConexion();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, dni);
+            try (ResultSet rs = cs.executeQuery()) {
+                if (rs.next()) {
+                    return new Usuario(rs.getInt("id"), rs.getString("nombre"), rs.getString("apellido"),
+                        rs.getString("email"), rs.getLong("dni"), rs.getString("telefono"));
+                }
+            }
+        }
+        return null;
     }
 
     @Override
