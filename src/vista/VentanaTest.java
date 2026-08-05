@@ -4,9 +4,11 @@ import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.OpcionTest;
 import modelo.PreguntaTest;
+import modelo.ResultadoTestGuardado;
 import vista.componentes.BarraProgreso;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.IconoVectorial;
+import vista.componentes.PanelCertificado;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -26,6 +28,7 @@ public class VentanaTest extends VentanaBase {
     private final ControladorTest controlador = new ControladorTest();
     private final Curso curso;
     private final String emailUsuario;
+    private final String nombreUsuario;
     private final Runnable alVolver;
 
     private List<PreguntaTest> preguntas = new ArrayList<>();
@@ -37,10 +40,11 @@ public class VentanaTest extends VentanaBase {
     private JButton botonVolverEncabezado;
     private JPanel panelPreguntas;
 
-    public VentanaTest(Curso curso, String emailUsuario, Runnable alVolver) {
+    public VentanaTest(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
         super("Educ G", EXIT_ON_CLOSE);
         this.curso = curso;
         this.emailUsuario = emailUsuario;
+        this.nombreUsuario = nombreUsuario;
         this.alVolver = alVolver;
         cargarPreguntas();
         construirUI();
@@ -68,9 +72,13 @@ public class VentanaTest extends VentanaBase {
     }
 
     private JPanel construirEncabezado() {
+        // Mismo azul que el encabezado de VentanaContenidoCurso (de donde se entra al test) —
+        // el texto/la barra de progreso de acá abajo están pensados para ese fondo oscuro
+        // (blanco/celeste claro, track semitransparente blanco); con el fondo clarito del
+        // módulo admin (240,245,250) quedaban casi invisibles.
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(new Color(36, 91, 168, 221));
         encabezado.setBorder(new EmptyBorder(24, 32, 12, 32));
         encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
 
@@ -235,12 +243,42 @@ public class VentanaTest extends VentanaBase {
         }
 
         try {
-            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getId(), preguntas, respuestasSeleccionadas);
+            ResultadoTestGuardado resultado = controlador.corregirYGuardar(emailUsuario, curso.getId(), preguntas, respuestasSeleccionadas);
+            int puntaje = resultado.getPuntaje();
             boolean aprobado = puntaje >= ControladorTest.puntajeAprobacion();
             mostrarResultados(puntaje, aprobado);
+            if (resultado.isCertificadoNuevo()) {
+                enviarCertificadoPorEmailEnSegundoPlano(puntaje);
+            }
         } catch (SQLException ex) {
             DialogoPersonalizado.mostrarError(this, "No se pudo guardar el resultado:\n" + ex.getMessage());
         }
+    }
+
+    /** Solo se llama la primera vez que se aprueba este curso (ver {@code certificadoNuevo}).
+     * Best-effort: si el envío falla, el certificado sigue disponible en la app de todos modos
+     * (botón "Ver Certificado"), así que no interrumpe al usuario con un diálogo de error — igual
+     * que {@code VentanaContenidoCurso.guardarProgreso()} con otras llamadas no críticas. */
+    private void enviarCertificadoPorEmailEnSegundoPlano(int puntaje) {
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                byte[] png = new PanelCertificado(curso, nombreUsuario, puntaje).renderizarComoPng();
+                controlador.enviarCertificadoPorEmail(emailUsuario, nombreUsuario, curso.getTitulo(), puntaje, png);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                } catch (Exception ex) {
+                    System.err.println("No se pudo enviar el certificado por email: "
+                        + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+                }
+            }
+        };
+        worker.execute();
     }
 
     /** Reemplaza el cuerpo de la ventana por el resumen del puntaje y la revisión pregunta por pregunta. */

@@ -26,7 +26,7 @@ import java.util.List;
 /** Módulo Alumnos del panel de administrador: alta, búsqueda por DNI, listado, modificación y bajas. */
 public class VentanaAdminAlumnos extends VentanaBase {
 
-    private static final int COLUMNA_ACCIONES = 7;
+    private static final int COLUMNA_ACCIONES = 6;
 
     private final ControladorAdminAlumnos controlador = new ControladorAdminAlumnos();
     private final String emailAdmin;
@@ -246,6 +246,13 @@ public class VentanaAdminAlumnos extends VentanaBase {
 
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setBorder(BorderFactory.createLineBorder(EstiloUI.BORDE, 1));
+        // Reservado siempre (en vez de AS_NEEDED, el default): si el ancho de columnas se calcula
+        // antes de que la barra aparezca (pocas filas al abrir, muchas después de una búsqueda) y
+        // recién ahí se hace necesaria, la tabla no vuelve a recalcular su ancho — la barra le come
+        // espacio al viewport y la última columna (Acciones) queda parcialmente tapada. Reservando
+        // el espacio siempre, el ancho disponible es el mismo desde el primer render, con o sin
+        // filas suficientes para necesitar scroll.
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         scroll.getHorizontalScrollBar().setUnitIncrement(14);
         return scroll;
@@ -314,36 +321,38 @@ public class VentanaAdminAlumnos extends VentanaBase {
     }
 
     /**
-     * Ancho fijo por columna, calculado a partir de la cantidad máxima de caracteres que puede
-     * traer cada campo: DNI (9 dígitos, {@code Validador.esDniValido}), teléfono (20 caracteres,
-     * {@code Validador.esTelefonoValido}) y fecha (10 = "aaaa-mm-dd") son exactos. Nombre/apellido/
-     * email no tienen un tope realista chico (hasta 100/255 en la base) — se usa un ancho generoso
-     * pero acotado en vez del máximo literal, que haría la tabla inusable.
+     * Ancho por columna: un {@code preferido} (ideal, calculado a partir de la cantidad máxima de
+     * caracteres que puede traer cada campo — DNI 9 dígitos y fecha "aaaa-mm-dd" son exactos;
+     * nombre/apellido/email/teléfono no tienen un tope realista chico, se usa uno generoso pero
+     * acotado) y un {@code minimo} bien por debajo de ese ideal. La diferencia importa: con
+     * {@code AUTO_RESIZE_ALL_COLUMNS}, Swing solo puede comprimir una columna hasta su
+     * {@code minWidth} — si el ancho preferido se usara también como mínimo (como antes), la tabla
+     * no podía achicarse por debajo de esa suma y aparecía scroll horizontal en cualquier ventana
+     * más angosta que eso. Con un mínimo chico, la tabla siempre se ajusta exactamente al ancho
+     * disponible del contenedor, sin scroll — a costa de recortar texto en ventanas muy angostas.
      */
     private void fijarAnchoColumnas() {
         FontMetrics fm = tabla.getFontMetrics(tabla.getFont());
-        fijarAncho(0, anchoPara(fm, 20));  // Nombre
-        fijarAncho(1, anchoPara(fm, 20));  // Apellido
-        fijarAncho(2, anchoPara(fm, 15));   // DNI
-        fijarAncho(3, anchoPara(fm, 35));  // Email
-        fijarAncho(4, anchoPara(fm, 22));  // Teléfono
-        fijarAncho(5, anchoPara(fm, 15));  // Registrado
-        fijarAncho(6, anchoPara(fm, 10));   // Estado
+        fijarAncho(0, anchoPara(fm, 20), anchoPara(fm, 8));   // Nombre
+        fijarAncho(1, anchoPara(fm, 20), anchoPara(fm, 9));   // Apellido
+        fijarAncho(2, anchoPara(fm, 15), anchoPara(fm, 9));   // DNI (9 dígitos, siempre completo)
+        fijarAncho(3, anchoPara(fm, 35), anchoPara(fm, 10));  // Email
+        fijarAncho(4, anchoPara(fm, 22), anchoPara(fm, 10));  // Teléfono
+        fijarAncho(5, anchoPara(fm, 15), anchoPara(fm, 10));  // Registrado ("aaaa-mm-dd", siempre completo)
 
         centrar(2); // DNI
         centrar(4); // Teléfono
         centrar(5); // Registrado
-        centrar(6); // Estado
     }
 
     private int anchoPara(FontMetrics fm, int caracteres) {
         return fm.charWidth('0') * caracteres + 28;
     }
 
-    private void fijarAncho(int indice, int ancho) {
+    private void fijarAncho(int indice, int preferido, int minimo) {
         TableColumn columna = tabla.getColumnModel().getColumn(indice);
-        columna.setMinWidth(ancho);
-        columna.setPreferredWidth(ancho);
+        columna.setMinWidth(minimo);
+        columna.setPreferredWidth(preferido);
     }
 
     private void centrar(int indice) {
@@ -382,7 +391,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
     private void actualizarFilas(List<AlumnoAdmin> lista) {
         this.alumnos = lista;
 
-        String[] columnas = {"Nombre", "Apellido", "DNI", "Email", "Teléfono", "Registrado", "Estado", "Acciones"};
+        String[] columnas = {"Nombre", "Apellido", "DNI", "Email", "Teléfono", "Registrado", "Acciones"};
         Object[][] datos = new Object[lista.size()][columnas.length];
         for (int i = 0; i < lista.size(); i++) {
             AlumnoAdmin a = lista.get(i);
@@ -390,7 +399,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
                 ? a.getFechaRegistro().substring(0, 10) : String.valueOf(a.getFechaRegistro());
             datos[i] = new Object[]{
                 a.getNombre(), a.getApellido(), String.valueOf(a.getDni()), a.getEmail(), a.getTelefono(),
-                fecha, a.isActivo() ? "Activo" : "Inactivo", ""
+                fecha, ""
             };
         }
 

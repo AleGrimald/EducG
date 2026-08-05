@@ -342,19 +342,29 @@ public class VentanaContenidoCurso extends VentanaBase {
     }
 
     private JScrollPane construirCajaTexto(String html, boolean esEjercicio) {
+        // El motor HTML de Swing (HTMLEditorKit) no hace bien la cascada de font-size desde el
+        // body hacia los hijos (sobre todo listas, tablas y bloques de código) — sin una regla
+        // explícita por elemento, esos caen a un tamaño por defecto bastante más chico que el
+        // resto del texto. Por eso cada selector de acá abajo tiene su propio font-size, en vez
+        // de confiar en la herencia.
         JEditorPane contenidoLbl = new JEditorPane("text/html", "<html><head><meta charset=\"UTF-8\"><style>" +
-            "body { font-family: Segoe UI, Arial; font-size: 14px; color: #7F8C8D; line-height: 1.6; margin: 0; word-wrap: break-word; }" +
-            "h1, h2, h3 { color: #1E0550; margin: 15px 0 10px 0; }" +
-            "code { background-color: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New'; }" +
+            "body { font-family: Segoe UI, Arial; font-size: 15px; color: #7F8C8D; line-height: 1.6; margin: 0; word-wrap: break-word; }" +
+            "p { font-size: 15px; margin: 10px 0; }" +
+            "h1 { font-size: 24px; color: #1E0550; margin: 15px 0 10px 0; }" +
+            "h2 { font-size: 20px; color: #1E0550; margin: 15px 0 10px 0; }" +
+            "h3 { font-size: 17px; color: #1E0550; margin: 15px 0 10px 0; }" +
+            "strong, b { font-size: inherit; }" +
+            "code { background-color: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New'; font-size: 14px; }" +
             "pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; border-left: 3px solid #1E0550; }" +
-            "pre code { background-color: transparent; padding: 0; }" +
-            "ul, ol { margin: 10px 0; padding-left: 20px; }" +
-            "table { border-collapse: collapse; width: 100%; margin: 10px 0; }" +
-            "table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }" +
+            "pre code { background-color: transparent; padding: 0; font-size: 14px; }" +
+            "ul, ol { margin: 10px 0; padding-left: 20px; font-size: 15px; }" +
+            "li { font-size: 15px; margin: 4px 0; }" +
+            "table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }" +
+            "table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 14px; }" +
             "table th { background-color: #f4f4f4; font-weight: bold; }" +
-            "a { color: #2980B9; text-decoration: none; }" +
+            "a { color: #2980B9; text-decoration: none; font-size: inherit; }" +
             "a:hover { text-decoration: underline; }" +
-            "</style></head><body style='width: 960px; padding: 0 15px;'>" + html + "</body></html>");
+            "</style></head><body style='padding: 10px;'>" + html + "</body></html>");
         contenidoLbl.setEditable(false);
         contenidoLbl.setOpaque(false);
         contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
@@ -513,7 +523,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private void abrirTest() {
         if (!iniciarTransicionUnica()) return;
         dispose();
-        new VentanaTest(curso, emailUsuario, () ->
+        new VentanaTest(curso, emailUsuario, nombreUsuario, () ->
             new VentanaContenidoCurso(curso, emailUsuario, nombreUsuario, alVolver).setVisible(true)
         ).setVisible(true);
     }

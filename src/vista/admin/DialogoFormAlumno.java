@@ -147,6 +147,6 @@ public class DialogoFormAlumno extends JDialog {
     }
 
     private void mostrarError(String msg) {
-        DialogoPersonalizado.mostrarError((JFrame) getParent(), msg);
+        DialogoPersonalizado.mostrarError(this, msg);
     }
 }

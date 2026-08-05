@@ -141,11 +141,11 @@ public class VentanaVerificacionCodigo extends JDialog {
 
         try {
             if (dniStr.isEmpty()) {
-                DialogoPersonalizado.mostrarError(padre, "Ingresá tu DNI.");
+                DialogoPersonalizado.mostrarError(this, "Ingresá tu DNI.");
                 return;
             }
             if (codigo.isEmpty()) {
-                DialogoPersonalizado.mostrarError(padre, "Ingresá el código que recibiste.");
+                DialogoPersonalizado.mostrarError(this, "Ingresá el código que recibiste.");
                 return;
             }
 
@@ -153,24 +153,24 @@ public class VentanaVerificacionCodigo extends JDialog {
             boolean valido = controlador.verificarCodigo(dni, codigo);
 
             if (valido) {
-                DialogoPersonalizado.mostrarExito(padre, "¡Cuenta verificada exitosamente!", () -> {
+                DialogoPersonalizado.mostrarExito(this, "¡Cuenta verificada exitosamente!", () -> {
                     if (alVerificarExitoso != null) alVerificarExitoso.run();
                     dispose();
                 });
             } else {
-                DialogoPersonalizado.mostrarError(padre, "El código no es válido. Verificá que esté correcto.");
+                DialogoPersonalizado.mostrarError(this, "El código no es válido. Verificá que esté correcto.");
             }
         } catch (IllegalArgumentException ex) {
-            DialogoPersonalizado.mostrarError(padre, ex.getMessage());
+            DialogoPersonalizado.mostrarError(this, ex.getMessage());
         } catch (SQLException ex) {
-            DialogoPersonalizado.mostrarError(padre, "Error en la base de datos: " + ex.getMessage());
+            DialogoPersonalizado.mostrarError(this, "Error en la base de datos: " + ex.getMessage());
         }
     }
 
     private void reenviarCodigo() {
         String dniStr = campoDni.getText().trim();
         if (dniStr.isEmpty()) {
-            DialogoPersonalizado.mostrarError(padre, "Ingresá tu DNI.");
+            DialogoPersonalizado.mostrarError(this, "Ingresá tu DNI.");
             return;
         }
 
@@ -189,12 +189,12 @@ public class VentanaVerificacionCodigo extends JDialog {
                 botonReenviar.setEnabled(true);
                 try {
                     get();
-                    DialogoPersonalizado.mostrarExito(padre, "Código reenviado a tu email.");
+                    DialogoPersonalizado.mostrarExito(VentanaVerificacionCodigo.this, "Código reenviado a tu email.");
                     campoCodigo.setText("");
                     campoCodigo.requestFocus();
                 } catch (Exception ex) {
                     String msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    DialogoPersonalizado.mostrarError(padre, "Error: " + msg);
+                    DialogoPersonalizado.mostrarError(VentanaVerificacionCodigo.this, "Error: " + msg);
                 }
             }
         };
@@ -216,7 +216,7 @@ public class VentanaVerificacionCodigo extends JDialog {
                     // Éxito silencioso, el usuario ya sabe que le enviamos un código
                 } catch (Exception ex) {
                     String msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    DialogoPersonalizado.mostrarError(padre,
+                    DialogoPersonalizado.mostrarError(VentanaVerificacionCodigo.this,
                         "Error al enviar el código: " + msg);
                 }
             }

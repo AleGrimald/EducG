@@ -19,7 +19,7 @@ public class DialogoPersonalizado extends JDialog {
     private Runnable alConfirmar;
 
     /** Diálogo simple (éxito/error/info) con un solo botón "Aceptar". */
-    public DialogoPersonalizado(JFrame padre, TipoDialogo tipo, String titulo, String mensaje) {
+    public DialogoPersonalizado(Window padre, TipoDialogo tipo, String titulo, String mensaje) {
         this(padre, tipo, titulo, mensaje, null);
     }
 
@@ -28,8 +28,12 @@ public class DialogoPersonalizado extends JDialog {
      * en {@code textoBotonConfirmar} (ej. "Sí, dar de baja"). Usar junto con
      * {@link #establecerListenerConfirmar(Runnable)}.
      */
-    public DialogoPersonalizado(JFrame padre, TipoDialogo tipo, String titulo, String mensaje, String textoBotonConfirmar) {
-        super(padre, false);
+    public DialogoPersonalizado(Window padre, TipoDialogo tipo, String titulo, String mensaje, String textoBotonConfirmar) {
+        // Window (no JFrame): si se muestra desde dentro de un JDialog modal (ej. un formulario de
+        // alta/edición), tiene que quedar parenteado a ESE diálogo — no a la ventana de más afuera —
+        // para no quedar bloqueado por su propia modalidad (Swing bloquea toda ventana que no sea
+        // descendiente del modal activo; un diálogo bloqueado no reacciona a clicks y parece colgado).
+        super(padre, Dialog.ModalityType.MODELESS);
         this.tipo = tipo;
         this.titulo = titulo;
         this.mensaje = mensaje;
@@ -209,21 +213,21 @@ public class DialogoPersonalizado extends JDialog {
         timer.start();
     }
 
-    public static void mostrarExito(JFrame padre, String mensaje) {
+    public static void mostrarExito(Window padre, String mensaje) {
         new DialogoPersonalizado(padre, TipoDialogo.EXITO, "¡Éxito!", mensaje);
     }
 
-    /** Igual que {@link #mostrarExito(JFrame, String)}, pero ejecuta {@code alCerrar} cuando el diálogo termina de cerrarse. */
-    public static void mostrarExito(JFrame padre, String mensaje, Runnable alCerrar) {
+    /** Igual que {@link #mostrarExito(Window, String)}, pero ejecuta {@code alCerrar} cuando el diálogo termina de cerrarse. */
+    public static void mostrarExito(Window padre, String mensaje, Runnable alCerrar) {
         DialogoPersonalizado dialogo = new DialogoPersonalizado(padre, TipoDialogo.EXITO, "¡Éxito!", mensaje);
         dialogo.establecerListenerCierre(alCerrar);
     }
 
-    public static void mostrarError(JFrame padre, String mensaje) {
+    public static void mostrarError(Window padre, String mensaje) {
         new DialogoPersonalizado(padre, TipoDialogo.ERROR, "Error", mensaje);
     }
 
-    public static void mostrarInfo(JFrame padre, String mensaje) {
+    public static void mostrarInfo(Window padre, String mensaje) {
         new DialogoPersonalizado(padre, TipoDialogo.INFO, "Información", mensaje);
     }
 
@@ -231,7 +235,7 @@ public class DialogoPersonalizado extends JDialog {
      * Muestra una confirmación con dos botones. {@code alConfirmar} se ejecuta solo si el
      * usuario elige la opción de confirmar, nunca si cancela o cierra el diálogo.
      */
-    public static DialogoPersonalizado mostrarConfirmacion(JFrame padre, String titulo, String mensaje,
+    public static DialogoPersonalizado mostrarConfirmacion(Window padre, String titulo, String mensaje,
                                                             String textoBotonConfirmar, Runnable alConfirmar) {
         DialogoPersonalizado dialogo = new DialogoPersonalizado(padre, TipoDialogo.CONFIRMACION, titulo, mensaje, textoBotonConfirmar);
         dialogo.establecerListenerConfirmar(alConfirmar);

@@ -6,6 +6,7 @@ import dao.CursoDAOJdbc;
 import dao.InscripcionDAOJdbc;
 import dao.ResultadoTestDAOJdbc;
 import dao.TestPreguntasDAOJdbc;
+import email.EnviadorEmail;
 import servicio.ServicioChatbot;
 import servicio.ServicioCursos;
 import servicio.ServicioInscripcion;
@@ -27,7 +28,7 @@ public class ControladorChatbot {
     private final ServicioChatbot servicioChatbot = new ServicioChatbot(
         new ServicioInscripcion(new InscripcionDAOJdbc()),
         new ServicioCursos(new CursoDAOJdbc()),
-        new ServicioTest(new TestPreguntasDAOJdbc(), new ResultadoTestDAOJdbc()),
+        new ServicioTest(new TestPreguntasDAOJdbc(), new ResultadoTestDAOJdbc(), new EnviadorEmail()),
         FabricaMotorChatbot.obtenerMotor()
     );
 

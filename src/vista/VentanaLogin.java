@@ -168,7 +168,7 @@ public class VentanaLogin extends VentanaBase {
         botonRegistro.addActionListener(e -> abrirRegistro());
         agregarFilaTarjeta(tarjeta, botonRegistro, gbcTarjeta, 9, new Insets(0, 0, 20, 0));
 
-        JButton botonVerificacion = FabricaUI.crearBotonSecundario("Ya tengo código de verificación", IconoVectorial.Tipo.SIGUIENTE);
+        JButton botonVerificacion = FabricaUI.crearBotonSecundario("Ya tengo código de verificación");
         botonVerificacion.addActionListener(e -> abrirVerificacion());
         agregarFilaTarjeta(tarjeta, botonVerificacion, gbcTarjeta, 10, new Insets(0, 0, 0, 0));
 
