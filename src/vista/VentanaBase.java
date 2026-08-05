@@ -49,7 +49,13 @@ public abstract class VentanaBase extends JFrame {
         final VentanaChatFlotante[] ventanaChatRef = new VentanaChatFlotante[1];
         burbuja.alHacerClic(() -> {
             if (ventanaChatRef[0] != null && ventanaChatRef[0].isDisplayable()) {
-                ventanaChatRef[0].toFront();
+                if (ventanaChatRef[0].isVisible()) {
+                    ventanaChatRef[0].toFront();
+                } else {
+                    // Se había minimizado (ocultado, no destruido): la reabrimos con el
+                    // mismo historial de conversación en vez de crear una ventana nueva.
+                    ventanaChatRef[0].restaurar();
+                }
                 return;
             }
             ventanaChatRef[0] = new VentanaChatFlotante(this, emailUsuario, cursoTituloActual);

@@ -35,7 +35,7 @@ public final class FabricaUI {
         return panel;
     }
 
-    /** Tarjeta blanca con esquinas redondeadas y sombra sutil. */
+    /** Tarjeta con esquinas redondeadas y sombra sutil, fondo cálido. */
     public static JPanel crearTarjeta() {
         JPanel card = new JPanel(new GridBagLayout()) {
             @Override
@@ -44,7 +44,7 @@ public final class FabricaUI {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(EstiloUI.SOMBRA);
                 g2.fill(new RoundRectangle2D.Float(4, 6, getWidth() - 5, getHeight() - 6, 18, 18));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 5, getHeight() - 7, 18, 18));
                 g2.dispose();
             }
@@ -156,7 +156,7 @@ public final class FabricaUI {
         } catch (Exception e) {
             JLabel fallback = new JLabel("Educ G");
             fallback.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-            fallback.setForeground(Color.WHITE);
+            fallback.setForeground(EstiloUI.TEXTO_PRIMARIO);
             return fallback;
         }
     }

@@ -51,7 +51,7 @@ public class VentanaMisEstadisticas extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -93,7 +93,7 @@ public class VentanaMisEstadisticas extends VentanaBase {
 
         // Panel principal de contenido
         JPanel contenido = new JPanel();
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
         contenido.setBorder(new EmptyBorder(24, 40, 24, 40));
 
@@ -219,7 +219,7 @@ public class VentanaMisEstadisticas extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 18));
                 g2.fill(new RoundRectangle2D.Float(3, 5, getWidth() - 4, getHeight() - 4, 14, 14));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 4, getHeight() - 5, 14, 14));
                 g2.dispose();
             }

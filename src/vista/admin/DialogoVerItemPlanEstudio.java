@@ -18,7 +18,7 @@ public class DialogoVerItemPlanEstudio extends JDialog {
 
     private void construirUI(JFrame padre, ItemPlanEstudio item) {
         JPanel raiz = new JPanel(new BorderLayout());
-        raiz.setBackground(Color.WHITE);
+        raiz.setBackground(EstiloUI.FONDO_SUAVE);
         raiz.setBorder(new EmptyBorder(28, 32, 24, 32));
         setContentPane(raiz);
 

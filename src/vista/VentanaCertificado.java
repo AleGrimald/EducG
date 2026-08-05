@@ -44,7 +44,7 @@ public class VentanaCertificado extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 30));
                 g2.fill(new RoundRectangle2D.Float(6, 10, getWidth() - 8, getHeight() - 10, 14, 14));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 6, getHeight() - 8, 14, 14));
                 g2.setColor(EstiloUI.AZUL_CLARO);
                 g2.setStroke(new BasicStroke(4f));

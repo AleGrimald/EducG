@@ -11,8 +11,8 @@ import java.awt.geom.RoundRectangle2D;
 /** Tarjeta visual para un curso. */
 public class TarjetaCurso extends JPanel {
 
-    private static final Color COLOR_TARJETA_BG = Color.WHITE;
-    private static final Color COLOR_DIVISOR     = new Color(230, 236, 240);
+    private static final Color COLOR_TARJETA_BG = EstiloUI.FONDO_SUAVE;
+    private static final Color COLOR_DIVISOR     = EstiloUI.BORDE;
     private static final Color COLOR_SOMBRA      = new Color(0, 0, 0, 18);
 
     private final BotonRedondeado accionBtn;

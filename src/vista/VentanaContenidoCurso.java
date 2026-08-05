@@ -1,11 +1,14 @@
 package vista;
 
+import chatbot.MotorChatbotException;
 import controlador.ControladorCursos;
 import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.Leccion;
+import modelo.ResultadoEvaluacionEjercicio;
 import vista.componentes.IconoCurso;
 import vista.componentes.IconoVectorial;
+import vista.componentes.PanelEditorCodigo;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -17,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Muestra el contenido de un curso al que el usuario ya está inscripto: alterna clases y,
@@ -103,7 +107,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -116,12 +120,12 @@ public class VentanaContenidoCurso extends VentanaBase {
         filaTitulo.add(IconoCurso.crearEtiqueta(curso, 36));
         JLabel tituloLbl = new JLabel(curso.getTitulo());
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        tituloLbl.setForeground(Color.WHITE);
+        tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
         filaTitulo.add(tituloLbl);
 
         JLabel duracionLbl = new JLabel("⏱ " + curso.getDuracion() + "  ·  " + curso.getDescripcion());
         duracionLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        duracionLbl.setForeground(new Color(200, 220, 255));
+        duracionLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
 
         bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
@@ -141,10 +145,10 @@ public class VentanaContenidoCurso extends VentanaBase {
 
     private Component construirContenido() {
         JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        contenedorCentral.setBackground(new Color(245, 248, 252));
+        contenedorCentral.setBackground(EstiloUI.FONDO_SUAVE);
 
         JPanel contenido = new JPanel();
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
 
         contenido.add(construirBarraEvaluacion());
@@ -215,71 +219,118 @@ public class VentanaContenidoCurso extends VentanaBase {
         bloque.add(tituloEjercicio);
         bloque.add(Box.createVerticalStrut(14));
 
-        bloque.add(construirCajaTexto(leccion.getEjercicioPropuesto()));
-        bloque.add(Box.createVerticalStrut(20));
-
         boolean resuelto = ejerciciosResueltos.contains(paso.leccionIndex);
         if (resuelto) {
+            bloque.add(construirCajaTexto(leccion.getEjercicioPropuesto()));
+            bloque.add(Box.createVerticalStrut(20));
             JLabel resueltoLbl = new JLabel("✓  ¡Resuelto correctamente! Ya podés avanzar a la siguiente clase.");
             resueltoLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
             resueltoLbl.setForeground(EstiloUI.EXITO);
             resueltoLbl.setAlignmentX(LEFT_ALIGNMENT);
             bloque.add(resueltoLbl);
         } else {
-            bloque.add(construirFormularioRespuesta(paso, leccion));
+            bloque.add(construirFilaEjercicioYCodigo(paso, leccion));
         }
 
         return bloque;
     }
 
-    private JPanel construirFormularioRespuesta(Paso paso, Leccion leccion) {
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setAlignmentX(LEFT_ALIGNMENT);
+    /** Fila con el enunciado a la izquierda y el editor de código del alumno a la derecha. */
+    private JPanel construirFilaEjercicioYCodigo(Paso paso, Leccion leccion) {
+        JPanel fila = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        fila.setOpaque(false);
+        fila.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel etiqueta = FabricaUI.crearEtiqueta("Tu respuesta");
+        fila.add(construirCajaTexto(leccion.getEjercicioPropuesto(), EstiloUI.ANCHO_ENUNCIADO_EJERCICIO));
+        fila.add(construirColumnaEditor(paso, leccion));
+
+        return fila;
+    }
+
+    private JPanel construirColumnaEditor(Paso paso, Leccion leccion) {
+        JPanel columna = new JPanel();
+        columna.setOpaque(false);
+        columna.setLayout(new BoxLayout(columna, BoxLayout.Y_AXIS));
+
+        JLabel etiqueta = FabricaUI.crearEtiqueta("Tu código");
         etiqueta.setAlignmentX(LEFT_ALIGNMENT);
-        panel.add(etiqueta);
-        panel.add(Box.createVerticalStrut(6));
+        columna.add(etiqueta);
+        columna.add(Box.createVerticalStrut(6));
 
-        JPanel filaRespuesta = new JPanel(new BorderLayout(10, 0));
-        filaRespuesta.setOpaque(false);
-        filaRespuesta.setAlignmentX(LEFT_ALIGNMENT);
-        filaRespuesta.setMaximumSize(new Dimension(600, EstiloUI.ALTO_CAMPO));
+        PanelEditorCodigo editor = new PanelEditorCodigo(EstiloUI.ANCHO_EDITOR_CODIGO, alturaCajaEstandar());
+        columna.add(editor);
+        columna.add(Box.createVerticalStrut(10));
 
-        JTextField campoRespuesta = FabricaUI.crearCampo();
+        JPanel filaBoton = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        filaBoton.setOpaque(false);
+        filaBoton.setAlignmentX(LEFT_ALIGNMENT);
         JButton botonVerificar = FabricaUI.crearBotonPrimario("Verificar", IconoVectorial.Tipo.GUARDAR);
+        filaBoton.add(botonVerificar);
+        columna.add(filaBoton);
 
-        filaRespuesta.add(campoRespuesta, BorderLayout.CENTER);
-        filaRespuesta.add(botonVerificar, BorderLayout.EAST);
-        panel.add(filaRespuesta);
-
-        panel.add(Box.createVerticalStrut(8));
+        columna.add(Box.createVerticalStrut(8));
         JLabel feedbackLbl = new JLabel(" ");
         feedbackLbl.setFont(EstiloUI.FUENTE_PEQUENA);
         feedbackLbl.setAlignmentX(LEFT_ALIGNMENT);
-        panel.add(feedbackLbl);
+        columna.add(feedbackLbl);
 
-        Runnable verificar = () -> {
-            boolean correcta = controladorCursos.verificarRespuestaEjercicio(
-                campoRespuesta.getText(), leccion.getRespuestaEsperada());
-            if (correcta) {
-                ejerciciosResueltos.add(paso.leccionIndex);
-                reconstruirContenido();
-            } else {
-                feedbackLbl.setText("✕  Respuesta incorrecta. Volvé a intentarlo.");
-                feedbackLbl.setForeground(EstiloUI.ERROR);
-            }
-        };
-        botonVerificar.addActionListener(e -> verificar.run());
-        campoRespuesta.addActionListener(e -> verificar.run());
+        botonVerificar.addActionListener(e -> {
+            botonVerificar.setEnabled(false);
+            editor.setHabilitado(false);
+            setFeedback(feedbackLbl, "Evaluando con IA...", EstiloUI.TEXTO_SECUNDARIO);
 
-        return panel;
+            new SwingWorker<ResultadoEvaluacionEjercicio, Void>() {
+                @Override
+                protected ResultadoEvaluacionEjercicio doInBackground() throws Exception {
+                    return controladorCursos.evaluarEjercicio(
+                        editor.getCodigo(), leccion.getEjercicioPropuesto(), leccion.getRespuestaEsperada());
+                }
+
+                @Override
+                protected void done() {
+                    botonVerificar.setEnabled(true);
+                    editor.setHabilitado(true);
+                    try {
+                        ResultadoEvaluacionEjercicio resultado = get();
+                        if (resultado.isCorrecto()) {
+                            ejerciciosResueltos.add(paso.leccionIndex);
+                            reconstruirContenido();
+                        } else {
+                            setFeedback(feedbackLbl, "✕  " + resultado.getFeedback(), EstiloUI.ERROR);
+                        }
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    } catch (ExecutionException ee) {
+                        Throwable causa = ee.getCause();
+                        String mensaje = causa instanceof MotorChatbotException
+                            ? causa.getMessage()
+                            : "Ocurrió un error inesperado. Intentá de nuevo.";
+                        setFeedback(feedbackLbl, mensaje, EstiloUI.ERROR);
+                    }
+                }
+            }.execute();
+        });
+
+        return columna;
+    }
+
+    /** Feedback envuelto en HTML (puede ser varias líneas, viene de la IA) con escape básico
+     * para que código mencionado en el texto (ej. "<Saludo ... />") no rompa el render del label. */
+    private void setFeedback(JLabel label, String texto, Color color) {
+        String escapado = texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        label.setText("<html><body style='width: " + EstiloUI.ANCHO_EDITOR_CODIGO + "px'>"
+            + escapado.replace("\n", "<br>") + "</body></html>");
+        label.setForeground(color);
     }
 
     private JScrollPane construirCajaTexto(String textoHtml) {
-        JLabel contenidoLbl = new JLabel("<html><body style='width: 700px'>" + textoHtml + "</body></html>");
+        return construirCajaTexto(textoHtml, 748);
+    }
+
+    private JScrollPane construirCajaTexto(String textoHtml, int ancho) {
+        // -48px de margen (igual que el 748->700 original): deja lugar a la scrollbar vertical
+        // y al padding del JScrollPane, si no el texto queda más ancho que el viewport y se corta.
+        JLabel contenidoLbl = new JLabel("<html><body style='width: " + (ancho - 48) + "px'>" + textoHtml + "</body></html>");
         contenidoLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         contenidoLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
         contenidoLbl.setVerticalAlignment(SwingConstants.TOP);
@@ -302,13 +353,18 @@ public class VentanaContenidoCurso extends VentanaBase {
         cajaTexto.getViewport().setOpaque(false);
         cajaTexto.setAlignmentX(LEFT_ALIGNMENT);
 
-        int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.4);
-        Dimension tamanoCaja = new Dimension(748, alturaCaja);
+        Dimension tamanoCaja = new Dimension(ancho, alturaCajaEstandar());
         cajaTexto.setPreferredSize(tamanoCaja);
         cajaTexto.setMinimumSize(tamanoCaja);
         cajaTexto.setMaximumSize(tamanoCaja);
 
         return cajaTexto;
+    }
+
+    /** Alto fijo (40% de la pantalla) compartido por la caja de texto y el editor de código,
+     * para que ambos queden alineados y los botones no se muevan según el contenido. */
+    private int alturaCajaEstandar() {
+        return (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.4);
     }
 
     private JPanel construirFilaBotones() {
@@ -374,7 +430,7 @@ public class VentanaContenidoCurso extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 15));
                 g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
                 g2.dispose();
             }

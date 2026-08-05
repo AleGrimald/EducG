@@ -28,7 +28,7 @@ public class VentanaLogin extends VentanaBase {
 
     private void construirUI() {
         JPanel raiz = new JPanel(new GridBagLayout());
-        raiz.setBackground(Color.WHITE);
+        raiz.setBackground(EstiloUI.FONDO_SUAVE);
         setContentPane(raiz);
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -111,7 +111,7 @@ public class VentanaLogin extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 20));
                 g2.fill(new RoundRectangle2D.Float(6, 10, getWidth() - 8, getHeight() - 10, 20, 20));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 6, getHeight() - 8, 20, 20));
                 g2.setColor(EstiloUI.BORDE);
                 g2.setStroke(new BasicStroke(1.0f));
@@ -129,7 +129,7 @@ public class VentanaLogin extends VentanaBase {
 
         JLabel tituloTarjeta = new JLabel("Iniciar Sesión");
         tituloTarjeta.setFont(EstiloUI.FUENTE_ENCABEZADO);
-        tituloTarjeta.setForeground(EstiloUI.AZUL_OSCURO);
+        tituloTarjeta.setForeground(EstiloUI.TEXTO_PRIMARIO);
         tituloTarjeta.setHorizontalAlignment(SwingConstants.CENTER);
         agregarFilaTarjeta(tarjeta, tituloTarjeta, gbcTarjeta, 0, new Insets(0, 0, 30, 0));
 
