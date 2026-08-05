@@ -37,7 +37,7 @@ public class ServicioAdminAlumnos {
         } catch (NoSuchAlgorithmException e) {
             throw new SQLException("Error al procesar la contraseña.", e);
         }
-        return usuarioDAO.altaUsuario(email, hash, nombre, apellido, dni, telefono) == 1;
+        return usuarioDAO.altaUsuario(email, hash, nombre, apellido, dni, telefono, true) == 1;
     }
 
     public boolean modificar(int id, String email, String nombre, String apellido,

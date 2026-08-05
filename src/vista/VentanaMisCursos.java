@@ -255,7 +255,7 @@ public class VentanaMisCursos extends VentanaBase {
         botones.add(botonIngresar);
         botones.add(botonBaja);
 
-        JLabel iconoLbl = IconoCurso.crearEtiqueta(curso != null ? curso.getEmoji() : null, cursoTitulo, 44);
+        JLabel iconoLbl = IconoCurso.crearEtiqueta(curso != null ? curso.getEmoji() : null, curso != null ? curso.getEmojiClave() : null, cursoTitulo, 44);
         fila.add(iconoLbl, BorderLayout.WEST);
         fila.add(info, BorderLayout.CENTER);
         fila.add(botones, BorderLayout.EAST);

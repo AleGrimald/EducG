@@ -80,7 +80,7 @@ separados; para reconstruir la base desde cero alcanza con correr ese único arc
 |-------|---------|-----------|
 | **usuarios** | User accounts | id (PK), email (UNIQUE), password_hash (salt:sha256), nombre, apellido, dni (BIGINT), telefono (VARCHAR(20)), es_admin (TINYINT(1), default 0), activo (soft delete), fecha_creacion, fecha_modificacion |
 | **cursos** | Course catalog | id, emoji (INT, FK → imagenes.id_imagen, nullable — el ícono del curso), titulo (UNIQUE), descripcion, duracion, activo (soft delete), fecha_creacion, fecha_modificacion |
-| **imagenes** | Binarios de imágenes (LONGBLOB): logo de la app, ícono de ventana, e íconos de tecnología seleccionables para un curso | id_imagen (PK), datos (LONGBLOB), clave (VARCHAR(50) UNIQUE, nullable — `logo_app`/`icono_ventana`/`icono_python`/`icono_java`/`icono_github`/`icono_react`/`icono_sql`/`icono_algoritmo`; los íconos de curso se resuelven por esta clave, nunca por id fijo) |
+| **imagenes** | Binarios de imágenes (LONGBLOB): logo de la app, ícono de ventana, e íconos de tecnología seleccionables para un curso | id_imagen (PK), datos (LONGBLOB), clave (VARCHAR(50) UNIQUE, nullable — `logo_app`/`icono_ventana`/`icono_python`/`icono_java`/`icono_github`/`icono_react`/`icono_sql`/`icono_algoritmo`; los íconos de curso se resuelven por esta clave, nunca por id fijo), etiqueta (VARCHAR(50), nullable — texto legible mostrado en `SelectorIconoCurso`, ej. "Python"/"GitHub"/"SQL"; **marca qué filas son presets seleccionables**: `sp_listar_iconos_preset` trae las filas con `etiqueta IS NOT NULL` que además no sean `logo_app`/`icono_ventana`/`custom_%` (doble filtro a propósito — ver la fila del procedure más abajo), así que agregar un ícono de tecnología nuevo es un simple `INSERT` con `clave`+`etiqueta`+`datos`, sin tocar código. **Nunca le cargues un valor a `etiqueta` a mano (desde un cliente SQL/DBeaver/etc.) en `logo_app`, `icono_ventana` ni un `custom_*`** — aunque el procedure ya está blindado contra esto por clave, seguí dejándolo en `NULL` en esas filas para que la columna siga significando lo que dice significar) |
 | **curso_contenidos** | Course lessons (title + body, resolves 1NF) | curso_id (FK), orden, topico, contenido (LONGTEXT — texto completo de la lección), ejercicio_propuesto (TEXT NULL — enunciado opcional del wizard "Crear Curso"), respuesta_esperada (VARCHAR(255) NULL — obligatoria si hay ejercicio, se usa para verificarlo), activo |
 | **inscripciones** | User-course enrollments (N:M) | usuario_id (FK), curso_id (FK), fecha_inscripcion, activo, leccion_actual (TINYINT, progreso guardado en qué lección paró) |
 | **test_resultados** | Test attempt scores | usuario_id (FK), curso_id (FK), puntaje, aprobado (TINYINT(1), calculado por el procedure al insertar), fecha |
@@ -88,6 +88,7 @@ separados; para reconstruir la base desde cero alcanza con correr ese único arc
 | **test_opciones** | Multiple-choice options per question | pregunta_id (FK), texto, es_correcta, orden |
 | **test_respuestas_usuario** | Which option the user picked, per attempt | test_resultado_id (FK), pregunta_id (FK), opcion_elegida_id (FK), es_correcta |
 | **certificados** | Certificado emitido (uno por usuario+curso, `INSERT IGNORE` desde `sp_alta_resultado_test` al aprobar) | usuario_id (FK), curso_id (FK), test_resultado_id (FK), puntaje, fecha_emision |
+| **codigos_verificacion** | Códigos de 6 caracteres para verificación de email post-registro | id (PK), dni (BIGINT, no FK), codigo (VARCHAR(6)), fecha_generacion, fecha_expiracion |
 | **auditoria_cambios** | Log de cambios para futuras auditorías del panel admin (no usada por el código Java todavía) | usuario_admin_id (FK, SET NULL), tabla_afectada, registro_id, accion, datos_anteriores/datos_nuevos (JSON), fecha, ip_origen |
 
 No hay columna `rol`: el rol de administrador es el booleano `usuarios.es_admin`
@@ -128,10 +129,11 @@ los del panel de administrador (más nuevos) usan `crear`/`activar`/`desactivar`
 | `sp_obtener_estadisticas_usuario` | `ResultadoTestDAOJdbc.obtenerEstadisticas()` — `cursos_completados`/`tests_realizados`/`promedio_puntaje` |
 | `sp_listar_cursos_catalogo` | `CursoDAOJdbc.listarCatalogo()` — filtra `activo=1`; `LEFT JOIN imagenes` para traer el ícono (`emoji_datos`/`emoji_clave`) junto con el curso |
 | `sp_obtener_imagen_por_clave` | `ImagenDAOJdbc.obtenerPorClave()` — devuelve `id_imagen, datos` por `imagenes.clave`; usado por `FabricaUI` (logo/ícono de ventana) y por `AdminCursoDAOJdbc` para resolver la clave elegida en el selector de ícono de curso al id que esperan `sp_crear_curso`/`sp_modificar_curso` |
+| `sp_listar_iconos_preset` | `ImagenDAOJdbc.listarPresets()` — devuelve `id_imagen, clave, etiqueta, datos` de las filas con `etiqueta IS NOT NULL` y `clave` distinta de `logo_app`/`icono_ventana`/`custom_%` (blindaje explícito, no solo `etiqueta IS NOT NULL` — ver nota bajo la tabla `imagenes` más abajo, pasó en producción que alguien les cargó una etiqueta a mano desde un cliente SQL y aparecieron como ícono de curso seleccionable); `SelectorIconoCurso` puebla el combo con esto (cacheado por sesión, mismo criterio que `FabricaUI.CACHE_IMAGENES`) en vez de una lista de presets hardcodeada en Java |
 | `sp_crear_imagen` | `AdminCursoDAOJdbc` (interno, vía `resolverIdImagen`) — inserta un PNG subido desde `SelectorIconoCurso` como fila nueva en `imagenes` con una clave generada (`custom_<uuid>`), para que una edición posterior que no toque el ícono re-resuelva la misma fila en vez de duplicarla |
 | `sp_listar_contenidos_curso` | `CursoDAOJdbc.listarLecciones()` (privado) — por `curso_id`, no por título |
 | `sp_listar_preguntas_curso` | `TestPreguntasDAOJdbc.listarPorCurso()` — por `curso_id`; 10 al azar de 20, JOIN con `test_opciones` |
-| `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — por `curso_id`, calcula `aprobado` y emite certificado si corresponde |
+| `sp_alta_resultado_test` | `ResultadoTestDAOJdbc.registrarResultadoTest()` — por `curso_id`, calcula `aprobado`, emite certificado si corresponde y devuelve `p_certificado_nuevo` (1 = primera vez que se aprueba este curso, dispara el email del certificado; 0 = ya lo tenía) |
 | `sp_alta_respuesta_test` | `ResultadoTestDAOJdbc.registrarRespuesta()` |
 | `sp_obtener_mejor_puntaje_curso` | `ResultadoTestDAOJdbc.obtenerMejorPuntaje()` — mejor puntaje histórico (apruebe o no), -1 si nunca lo rindió |
 | `sp_obtener_progreso_inscripcion` / `sp_modificar_progreso_inscripcion` | `InscripcionDAOJdbc` — por `curso_id` |
@@ -193,12 +195,48 @@ DB_DATABASE=educg_db
 DB_USER=root
 DB_PASSWORD=<your_password>
 
+# Verificación de cuenta por email (Gmail SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=<tu_email_de_gmail>
+SMTP_PASSWORD=<tu_app_password_de_gmail>
+SMTP_FROM_NOMBRE=Educ G
+
 # Chatbot flotante ("Robotito") — opcional, ver sección "Chatbot flotante"
 # Proveedores con implementación real hoy: claude | gemini (gpt/kimi son stubs)
 CHATBOT_PROVEEDOR=gemini
 CHATBOT_API_KEY=<tu_api_key_de_gemini_o_claude>
 CHATBOT_MODELO=gemini-flash-latest
 ```
+
+**Nota sobre `SMTP_PASSWORD`:** Debe ser un **App Password** de Gmail (16 caracteres generados desde la configuración de seguridad de tu cuenta Google con verificación en 2 pasos activada). Gmail no acepta la contraseña normal de la cuenta para SMTP AUTH.
+
+**Nota sobre cuentas de Gmail recién creadas (fix 2026-08-04):** una cuenta de Gmail creada el
+mismo día, aunque tenga la verificación en 2 pasos activa y una App Password válida generada
+correctamente, puede recibir `535-5.7.8 Username and Password not accepted` de forma consistente
+al intentar SMTP AUTH — restricción anti-abuso de Google para cuentas nuevas, sin ninguna
+notificación visible para el dueño de la cuenta que explique el motivo. Se confirmó descartando
+el código por completo (mismo rechazo reproducido con `openssl s_client` puro, fuera de
+`EnviadorEmail`) y probando 3 App Passwords distintas en la misma cuenta nueva, todas rechazadas
+igual — una cuenta de Gmail personal más vieja, con la misma implementación y el mismo formato de
+credenciales, autenticó (`235 2.7.0 Accepted`) al primer intento. Si `SMTP_USER` empieza a fallar
+con este error de la nada (p. ej. al rotar la cuenta remitente), probar primero con una cuenta más
+vieja antes de sospechar del código — y si hace falta una cuenta nueva sí o sí, esperar 24-48hs
+después de crearla antes de intentar SMTP AUTH.
+
+**Nota sobre `SMTP_PORT` (465, no 587):** `EnviadorEmail` usa TLS directo desde el primer byte
+(SMTPS/465), no STARTTLS sobre el puerto de submission (587) — a propósito (fix 2026-08-04). En
+STARTTLS, la conexión arranca en texto plano y recién después de negociar `EHLO`/`STARTTLS`
+sobre esa misma conexión se hace el upgrade a TLS a mitad de camino. Se detectó en producción
+que ese upgrade se cuelga indefinidamente en ciertas redes (típico de un router/ISP con un
+"SMTP ALG" — un gateway que inspecciona el protocolo SMTP y no sabe manejar el cambio a binario
+TLS a mitad de la misma conexión TCP; confirmado comparando: STARTTLS/587 se colgaba sin
+respuesta justo en el handshake TLS, mientras que TLS directo contra smtp.gmail.com:465
+respondía al instante en la misma red). Si en algún despliegue futuro 465 no funcionara (algún
+proveedor SMTP sin soporte SMTPS), habría que reintroducir STARTTLS como fallback — hoy no hace
+falta, Gmail soporta ambos. `EnviadorEmail` también tiene timeouts de conexión (15s) y lectura
+(20s) — sin esto, un bloqueo de red silencioso cuelga el `Socket` indefinidamente en vez de
+fallar con un mensaje claro.
 
 `ConexionBD` (paquete `bd`) y `chatbot.ConfiguracionChatbot` comparten el mismo loader
 (`bd.CargadorEnv`), que busca `.env` en: working directory → project root → system
@@ -279,6 +317,34 @@ descarta también aunque haya quedado texto tipeado.
 Cada curso tiene un banco de 20 preguntas multiple-choice (`test_preguntas`/`test_opciones`); `sp_listar_preguntas_curso` elige 10 al azar en cada llamada, así el test no es siempre igual. `VentanaTest` las muestra con `JRadioButton` agrupados por pregunta; al finalizar, `ControladorTest`/`ServicioTest` corrigen contra `es_correcta`, guardan el intento en `test_resultados` (vía `sp_alta_resultado_test`, que calcula `aprobado` internamente — puntaje ≥ 60 — y devuelve el id creado) y cada respuesta elegida en `test_respuestas_usuario`. `ServicioTest.PUNTAJE_APROBACION` (60/100, del lado Java) tiene que mantenerse en sync con el `60` hardcodeado dentro de `sp_alta_resultado_test`/`sp_estadisticas_por_curso` — SQL no puede leer la constante de Java. Puntaje ≥ 60 ⇒ el curso queda "Aprobado" en `VentanaContenidoCurso`, habilitando el botón "Ver Certificado" (`VentanaCertificado`, una vista generada a partir de nombre/curso/fecha/puntaje).
 
 `sp_alta_resultado_test` también hace `INSERT IGNORE INTO certificados (...)` cuando el intento aprueba — a diferencia de una versión anterior de este archivo, los certificados **sí se persisten** (tabla `certificados`, `UNIQUE(usuario_id, curso_id)` así solo queda registrado el primero); `VentanaCertificado` sigue sin leer esa tabla, la sigue generando on-the-fly, pero el dato ya existe en la base para quien quiera, por ejemplo, un futuro listado de "certificados emitidos" (`sp_listar_certificados_emitidos`/`sp_listar_certificados_usuario`, ya definidos y sin usar todavía).
+
+**Envío del certificado por email (fix 2026-08-04):** `sp_alta_resultado_test` tiene un quinto
+parámetro `OUT p_certificado_nuevo TINYINT` (`ROW_COUNT()` justo después del `INSERT IGNORE INTO
+certificados` — 1 si insertó una fila nueva, 0 si el `INSERT IGNORE` no hizo nada porque ya
+existía). `ResultadoTestDAOJdbc.registrarResultadoTest()` lo expone como
+`modelo.ResultadoTestGuardado.isCertificadoNuevo()`, y `VentanaTest.manejarFinalizar()` lo usa
+para mandar el certificado por email **solo la primera vez que se aprueba ese curso** — reintentos
+posteriores (ya aprobado antes) no vuelven a disparar el envío, aunque se vuelva a aprobar.
+
+El diseño visual del certificado vive en `vista.componentes.PanelCertificado` (extraído de
+`VentanaCertificado`, que ahora solo lo envuelve en una ventana con botón "Cerrar") — se reusa
+tal cual tanto para mostrarlo en pantalla como para `PanelCertificado.renderizarComoPng()`, que
+lo rasteriza a PNG sin abrir ninguna ventana. **Gotcha de Swing importante ahí:** un
+`Container.validate()` (o un `doLayout()` de un solo nivel) no alcanza para poner en posición al
+árbol de componentes si el panel nunca se agregó a una ventana real — `validate()` es un no-op
+sin un peer nativo, y `doLayout()` sin recursión solo mueve a los hijos directos. La solución
+(`layoutRecursivo()` en `PanelCertificado`) es bajar el árbol a mano llamando `doLayout()` en
+cada `Container`, lo cual sí funciona sin peer. Sin esto, el PNG generado sale con el marco pero
+todo el contenido en blanco (se detectó así: 5KB de PNG en vez de los ~80KB esperados).
+
+`EnviadorEmail.enviarConAdjunto(...)` arma el MIME `multipart/mixed` a mano (mismo criterio
+"sockets crudos, sin librería" que el resto del archivo) — comparte la conexión/autenticación
+SMTP con `enviar()` vía el método privado `conectarYAutenticar()`. `ServicioTest` recibe un
+`EnviadorEmail` en el constructor (inyección manual, como el resto del proyecto) y arma el
+asunto/cuerpo en `enviarCertificadoPorEmail(...)`. El envío corre en un `SwingWorker` (llamada de
+red real, no puede bloquear el EDT — mismo patrón que `VentanaVerificacionCodigo`) y es
+best-effort: si falla, no se le muestra un diálogo de error al alumno (el certificado sigue
+disponible en la app vía "Ver Certificado" de todos modos), el error solo se imprime a stderr.
 
 ### Chatbot flotante ("Robotito")
 
@@ -443,6 +509,22 @@ Each window is a `JFrame` (via `VentanaBase`). Navigation uses `setVisible(true/
 2. Add the provider's default model id to `ConfiguracionChatbot.modeloPorDefecto(...)` if it isn't already there
 3. Nothing else changes — `FabricaMotorChatbot` already routes to it once `CHATBOT_PROVEEDOR` in `.env` matches the provider name; `ServicioChatbot`/`ControladorChatbot`/the vista layer are provider-agnostic
 
+### Recover corrupted images in the DB
+
+If the `imagenes` table gets corrupted (PNGs damaged or data loss), restore from `assets/`:
+
+```bash
+cd C:\Users\grima\Desktop\Ale\EducG
+javac -cp "lib/mysql-connector-j-8.3.0.jar" util/CargarImagenes.java
+java -cp ".;lib/mysql-connector-j-8.3.0.jar" util.CargarImagenes
+```
+
+**How to avoid:**
+- Preset images (`icono_python`, `icono_java`, etc.) are stored in `assets/` — the app has a fallback to load them from there if DB fails (see `IconoCurso.java`)
+- Only custom course images (user-uploaded) are stored in `imagenes` — presets should never be stored there
+- If icons aren't loading, `IconoCurso.crearEtiqueta()` tries: BD bytes → assets fallback → initial placeholder
+- Regular backups of `educg_db.sql` (via `mysqldump --routines --hex-blob --databases educg_db`) protect against data loss — `--hex-blob` is required, see the note under "Stored procedures are mandatory" below for why
+
 ## Security Notes
 
 - Passwords: SHA-256 + random 16-byte salt, stored as `saltHex:hashHex` (`servicio.HasheadorPassword`)
@@ -542,10 +624,10 @@ Dialogs automatically animate in/out and success/info dialogs auto-close after 2
 
 - **New developer checklist:** Run `mysql -u root -p < educg_db.sql` (single file — schema, all 52 procedures, and seed data), populate `.env`, ensure MySQL is on localhost:3306. `CHATBOT_API_KEY` is optional — without it the chatbot bubble still opens but shows a friendly error when you try to send a message. The dump already seeds an admin account (`admin@educg.com` — ask whoever ran the dump for the password, or update it directly: `UPDATE usuarios SET password_hash='<hash>' WHERE email='admin@educg.com';`, hash format is `HasheadorPassword`'s `saltHex:sha256Hex`).
 - **Hardcoded strings:** All UI text is in Spanish; no localization mechanism exists
-- **No background threads (except the chatbot):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. The one deliberate exception is `VentanaChatFlotante`, which uses `SwingWorker` for the HTTP call to the AI provider — that's a real external network call, not local MySQL, so blocking the EDT would freeze the window.
+- **No background threads (except the chatbot and email):** Database calls are synchronous on the EDT; consider adding progress dialogs for slow queries in future. There are two deliberate exceptions: `VentanaChatFlotante` uses `SwingWorker` for the HTTP call to the AI provider, and `VentanaVerificacionCodigo` uses `SwingWorker` for the SMTP email send — both are real external network calls (not local MySQL), so blocking the EDT would freeze the window.
 - **Test results:** `test_resultados` is now populated by `VentanaTest` (`sp_alta_resultado_test`, which also computes `aprobado` and emits a certificate row); `test_respuestas_usuario` records each individual answer per attempt.
 - **UI Consistency:** When adding new features, **always use `EstiloUI` constants** for colors, fonts, and dimensions. Breaking this rule will require refactoring.
-- **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a `CREATE PROCEDURE` directly against the running database and re-export `educg_db.sql` (`mysqldump --routines --triggers --single-transaction --add-drop-table --databases educg_db > educg_db.sql`) so the single file stays the source of truth — there's no separate incremental-migration file to edit anymore.
+- **Stored procedures are mandatory:** the DAO layer (`dao.*Jdbc`) only calls stored procedures via `CallableStatement` — never add a `PreparedStatement` with inline SQL to a DAO. If you need a new query, add a `CREATE PROCEDURE` directly against the running database and re-export `educg_db.sql` (`mysqldump --routines --triggers --single-transaction --add-drop-table --hex-blob --databases educg_db > educg_db.sql`) so the single file stays the source of truth — there's no separate incremental-migration file to edit anymore. **Always include `--hex-blob`:** without it, `mysqldump` escapes `LONGBLOB` columns (the `imagenes` table) as a charset-aware string literal, and any byte that isn't valid standalone UTF-8 — like the `0x89` that starts every PNG signature — gets silently mangled into the 3-byte UTF-8 replacement character. This corrupted every row of `imagenes` in the dump once already (fixed 2026-08-04 by reloading `logo_app`/`icono_ventana`/the 6 preset course icons from `assets/`; the 4 `custom_*` admin-uploaded course icons had no local backup and stayed corrupted — re-upload those from the admin panel if a course still references one). `--hex-blob` writes BLOBs as `0x...` literals instead, which round-trips any byte sequence exactly.
 - **`dni`/`telefono` are required:** at the app layer (`Validador`/`VentanaRegistro`); `sp_alta_usuario` will fail without them since they're `NOT NULL` columns, but unlike an earlier version of this schema, `dni` does **not** have a `UNIQUE` constraint in the database — duplicates aren't blocked at the DB level.
 - **Certificates ARE persisted** (unlike an earlier version of this app): `sp_alta_resultado_test` does `INSERT IGNORE INTO certificados` when a test attempt approves (`UNIQUE(usuario_id, curso_id)` keeps only the first). `VentanaCertificado` still generates its view on the fly rather than reading that table, but the data exists for a future "certificados emitidos" screen (`sp_listar_certificados_emitidos` is already defined, unused by Java so far).
 - **App logo/window icon now live in the `imagenes` table** (`FabricaUI.crearLogoEducG()`/`establecerIconoVentana()`, via `ImagenDAOJdbc`, keys `logo_app`/`icono_ventana`), not `assets/` — unlike before, `VentanaLogin` (the very first, pre-authentication window) now needs a live DB connection just to render its logo/icon. Both calls keep their original try/catch fallback (plain "Educ G" text label / default window icon), so a DB outage still degrades gracefully — just with the added latency of a failed connection attempt (JDBC driver default timeout) before falling back, instead of an instant local file-not-found.

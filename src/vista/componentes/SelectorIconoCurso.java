@@ -1,5 +1,7 @@
 package vista.componentes;
 
+import dao.ImagenDAOJdbc;
+import modelo.IconoPreset;
 import modelo.SeleccionIcono;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
@@ -12,36 +14,47 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
+import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Selector de ícono de curso: combo con los PNG de tecnología conocidos + botón para subir un
- * PNG propio desde el disco. El valor que se persiste es una {@link SeleccionIcono} — una clave
- * de {@code imagenes.clave} para los presets (y para el ícono ya asignado al editar un curso),
- * o los bytes crudos si se acaba de subir un archivo (todavía no existen como fila en la base;
- * el DAO los inserta recién al guardar). La miniatura del combo y la vista previa se leen de
- * {@code assets/} o del archivo recién elegido — nunca de la base, eso es solo UI del propio picker.
+ * Selector de ícono de curso: combo con los íconos de tecnología cargados en la tabla
+ * {@code imagenes} (las filas con {@code etiqueta} no nula, vía {@code sp_listar_iconos_preset})
+ * + botón para subir un PNG propio desde el disco. El valor que se persiste es una
+ * {@link SeleccionIcono} — una clave de {@code imagenes.clave} para los presets (y para el ícono
+ * ya asignado al editar un curso), o los bytes crudos si se acaba de subir un archivo (todavía no
+ * existen como fila en la base; el DAO los inserta recién al guardar). La lista de presets y sus
+ * miniaturas se traen de la base una sola vez por sesión (mismo criterio de caché estática que
+ * {@code FabricaUI.CACHE_IMAGENES}) — agregar una fila nueva con {@code etiqueta} no nula la hace
+ * aparecer acá sin tocar código, pero requiere reiniciar la app para que se vea (caché de sesión).
  */
 public class SelectorIconoCurso extends JPanel {
 
-    private static final String CARPETA_ASSETS = "assets/";
     private static final String CLAVE_SUBIDO = "__subido__";
 
-    /** {clave en imagenes.clave, etiqueta legible, archivo de assets/ para la miniatura}. "" = sin ícono. */
-    private static final String[][] PRESETS = {
-        {"", "Sin ícono", null},
-        {"icono_python", "Python", "python.png"},
-        {"icono_java", "Java", "java.png"},
-        {"icono_github", "GitHub", "github.png"},
-        {"icono_react", "React", "react.png"},
-        {"icono_sql", "SQL", "sql.png"},
-        {"icono_algoritmo", "Algoritmos", "algoritmo.png"},
-    };
+    /** Presets cargados de la base, cacheados tras la primera consulta (estáticos durante la sesión). */
+    private static List<IconoPreset> CACHE_PRESETS;
 
-    private static final Map<String, byte[]> CACHE_ASSETS = new HashMap<>();
+    private static synchronized List<IconoPreset> obtenerPresets() {
+        if (CACHE_PRESETS == null) {
+            try {
+                CACHE_PRESETS = new ImagenDAOJdbc().listarPresets();
+            } catch (SQLException e) {
+                CACHE_PRESETS = List.of(); // degradación: el selector queda solo con "Sin ícono"
+            }
+        }
+        return CACHE_PRESETS;
+    }
 
-    private final JFrame padre;
+    /** clave -> preset, para resolver etiqueta/miniatura de cada entrada del combo. */
+    private final Map<String, IconoPreset> presetsPorClave = new LinkedHashMap<>();
+
+    /** Window (no JFrame): quien instancia este selector desde dentro de un JDialog modal
+     * (ej. {@code DialogoFormCurso}) debe pasar ESE diálogo, no la ventana de más afuera —
+     * ver la nota equivalente en {@link DialogoPersonalizado}. */
+    private final Window padre;
     private final DefaultComboBoxModel<String> modeloCombo = new DefaultComboBoxModel<>();
     private final JComboBox<String> combo = new JComboBox<>(modeloCombo);
 
@@ -51,14 +64,18 @@ public class SelectorIconoCurso extends JPanel {
     private byte[] datosClaveActual;
     private String claveActual;
 
-    public SelectorIconoCurso(JFrame padre) {
+    public SelectorIconoCurso(Window padre) {
         this.padre = padre;
         setOpaque(false);
         setLayout(new BorderLayout(8, 0));
 
-        for (String[] par : PRESETS) modeloCombo.addElement(par[0]);
+        modeloCombo.addElement(""); // "Sin ícono"
+        for (IconoPreset preset : obtenerPresets()) {
+            presetsPorClave.put(preset.getClave(), preset);
+            modeloCombo.addElement(preset.getClave());
+        }
         combo.setRenderer(new RenderizadorIcono());
-        combo.setMaximumRowCount(PRESETS.length + 2);
+        combo.setMaximumRowCount(presetsPorClave.size() + 3);
         combo.setBackground(EstiloUI.FONDO_CAMPO);
         combo.setPreferredSize(new Dimension(0, EstiloUI.ALTO_CAMPO));
 
@@ -149,24 +166,8 @@ public class SelectorIconoCurso extends JPanel {
         if (indice >= 0) modeloCombo.removeElementAt(indice);
     }
 
-    private static boolean esClavePreset(String clave) {
-        for (String[] par : PRESETS) if (par[0].equals(clave)) return true;
-        return false;
-    }
-
-    private static String etiquetaPreset(String clave) {
-        for (String[] par : PRESETS) if (par[0].equals(clave)) return par[1];
-        return clave;
-    }
-
-    private static byte[] bytesDeAsset(String archivo) {
-        return CACHE_ASSETS.computeIfAbsent(archivo, a -> {
-            try {
-                return Files.readAllBytes(new File(CARPETA_ASSETS + a).toPath());
-            } catch (IOException e) {
-                return null;
-            }
-        });
+    private boolean esClavePreset(String clave) {
+        return presetsPorClave.containsKey(clave);
     }
 
     private class RenderizadorIcono extends JLabel implements ListCellRenderer<String> {
@@ -187,11 +188,13 @@ public class SelectorIconoCurso extends JPanel {
             } else if (valor != null && valor.equals(claveActual)) {
                 texto = "Imagen actual";
                 datosPreview = datosClaveActual;
+            } else if (valor == null || valor.isEmpty()) {
+                texto = "Sin ícono";
+                datosPreview = null;
             } else {
-                texto = etiquetaPreset(valor);
-                String archivo = null;
-                for (String[] par : PRESETS) if (par[0].equals(valor)) archivo = par[2];
-                datosPreview = archivo != null ? bytesDeAsset(archivo) : null;
+                IconoPreset preset = presetsPorClave.get(valor);
+                texto = preset != null ? preset.getEtiqueta() : valor;
+                datosPreview = preset != null ? preset.getDatos() : null;
             }
 
             setText(texto);

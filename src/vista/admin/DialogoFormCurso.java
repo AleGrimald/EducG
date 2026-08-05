@@ -45,7 +45,7 @@ public class DialogoFormCurso extends JDialog {
         int fila = 0;
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Ícono"), new Insets(0, 0, 6, 0));
-        campoEmoji = new SelectorIconoCurso(padre);
+        campoEmoji = new SelectorIconoCurso(this);
         agregarFila(raiz, gbc, fila++, campoEmoji, new Insets(0, 0, 14, 0));
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Título"), new Insets(0, 0, 6, 0));
@@ -105,6 +105,6 @@ public class DialogoFormCurso extends JDialog {
     }
 
     private void mostrarError(String msg) {
-        DialogoPersonalizado.mostrarError((JFrame) getParent(), msg);
+        DialogoPersonalizado.mostrarError(this, msg);
     }
 }

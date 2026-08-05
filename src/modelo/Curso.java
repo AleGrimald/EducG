@@ -7,15 +7,17 @@ public class Curso {
 
     private final int id;
     private final byte[] emoji;
+    private final String emojiClave;
     private final String titulo;
     private final String descripcion;
     private final String duracion;
     private final List<Leccion> lecciones;
 
-    public Curso(int id, byte[] emoji, String titulo, String descripcion,
+    public Curso(int id, byte[] emoji, String emojiClave, String titulo, String descripcion,
                  String duracion, List<Leccion> lecciones) {
         this.id          = id;
         this.emoji       = emoji;
+        this.emojiClave  = emojiClave;
         this.titulo      = titulo;
         this.descripcion = descripcion;
         this.duracion    = duracion;
@@ -24,6 +26,7 @@ public class Curso {
 
     public int          getId()          { return id; }
     public byte[]        getEmoji()       { return emoji; }
+    public String       getEmojiClave()  { return emojiClave; }
     public String       getTitulo()      { return titulo; }
     public String       getDescripcion() { return descripcion; }
     public String       getDuracion()    { return duracion; }

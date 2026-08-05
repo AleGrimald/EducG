@@ -8,8 +8,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Ícono de un curso: el PNG guardado en {@code cursos.emoji} ({@code LONGBLOB} — ver
@@ -22,6 +26,9 @@ public final class IconoCurso {
     private static final Color[] PALETA_PLACEHOLDER = {
         EstiloUI.AZUL_CLARO, EstiloUI.EXITO, EstiloUI.ADVERTENCIA, EstiloUI.ERROR, new Color(142, 68, 173)
     };
+
+    private static final String CARPETA_ASSETS = "assets/";
+    private static final Map<String, byte[]> CACHE_ASSETS = new HashMap<>();
 
     private IconoCurso() {}
 
@@ -37,14 +44,35 @@ public final class IconoCurso {
         }
     }
 
-    /** Etiqueta cuadrada lista para usar como ícono de un curso. */
+    /** Carga un PNG desde assets con fallback a clave de ícono (ej: icono_python → python.png). */
+    private static byte[] bytesDeAsset(String emojiClave) {
+        if (emojiClave == null || emojiClave.isBlank()) return null;
+        String archivoKey = emojiClave.startsWith("icono_") ? emojiClave.substring(6) + ".png" : emojiClave + ".png";
+        return CACHE_ASSETS.computeIfAbsent(archivoKey, a -> {
+            try {
+                return Files.readAllBytes(new File(CARPETA_ASSETS + a).toPath());
+            } catch (IOException e) {
+                return null;
+            }
+        });
+    }
+
+    /** Etiqueta cuadrada lista para usar como ícono de un curso (intenta BD, luego assets). */
     public static JLabel crearEtiqueta(Curso curso, int size) {
-        return crearEtiqueta(curso.getEmoji(), curso.getTitulo(), size);
+        return crearEtiqueta(curso.getEmoji(), curso.getEmojiClave(), curso.getTitulo(), size);
     }
 
     public static JLabel crearEtiqueta(byte[] datosPng, String tituloCurso, int size) {
+        return crearEtiqueta(datosPng, null, tituloCurso, size);
+    }
+
+    public static JLabel crearEtiqueta(byte[] datosPng, String emojiClave, String tituloCurso, int size) {
         JLabel lbl;
         Image icono = cargar(datosPng, size);
+        if (icono == null && emojiClave != null) {
+            byte[] bytesAsset = bytesDeAsset(emojiClave);
+            icono = cargar(bytesAsset, size);
+        }
         if (icono != null) {
             lbl = new JLabel(new ImageIcon(icono));
             lbl.setOpaque(false);

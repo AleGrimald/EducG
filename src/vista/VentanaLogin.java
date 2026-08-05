@@ -3,6 +3,7 @@ package vista;
 import controlador.ControladorLogin;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.IconoVectorial;
+import vista.componentes.VentanaVerificacionCodigo;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -165,7 +166,11 @@ public class VentanaLogin extends VentanaBase {
 
         JButton botonRegistro = FabricaUI.crearBotonSecundario("Crear Nueva Cuenta", IconoVectorial.Tipo.AGREGAR);
         botonRegistro.addActionListener(e -> abrirRegistro());
-        agregarFilaTarjeta(tarjeta, botonRegistro, gbcTarjeta, 9, new Insets(0, 0, 0, 0));
+        agregarFilaTarjeta(tarjeta, botonRegistro, gbcTarjeta, 9, new Insets(0, 0, 20, 0));
+
+        JButton botonVerificacion = FabricaUI.crearBotonSecundario("Ya tengo código de verificación");
+        botonVerificacion.addActionListener(e -> abrirVerificacion());
+        agregarFilaTarjeta(tarjeta, botonVerificacion, gbcTarjeta, 10, new Insets(0, 0, 0, 0));
 
         contenedorCentral.add(tarjeta, BorderLayout.CENTER);
         panel.add(contenedorCentral);
@@ -211,6 +216,11 @@ public class VentanaLogin extends VentanaBase {
         if (!iniciarTransicionUnica()) return;
         setVisible(false);
         new VentanaRegistro(this).setVisible(true);
+    }
+
+    private void abrirVerificacion() {
+        VentanaVerificacionCodigo ventanaVerif = new VentanaVerificacionCodigo(this, null, null, null);
+        ventanaVerif.setVisible(true);
     }
 
     private void mostrarError(String msg) {

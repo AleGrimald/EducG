@@ -3,6 +3,7 @@ package dao;
 import bd.ConexionBD;
 import modelo.EstadisticasUsuario;
 import modelo.ResultadoTest;
+import modelo.ResultadoTestGuardado;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -48,16 +49,17 @@ public class ResultadoTestDAOJdbc implements ResultadoTestDAO {
     }
 
     @Override
-    public int registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException {
-        final String sql = "{call sp_alta_resultado_test(?, ?, ?, ?)}";
+    public ResultadoTestGuardado registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException {
+        final String sql = "{call sp_alta_resultado_test(?, ?, ?, ?, ?)}";
         try (Connection conn = ConexionBD.obtenerConexion();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setString(1, email);
             cs.setInt(2, cursoId);
             cs.setInt(3, puntaje);
             cs.registerOutParameter(4, Types.INTEGER);
+            cs.registerOutParameter(5, Types.TINYINT);
             cs.execute();
-            return cs.getInt(4);
+            return new ResultadoTestGuardado(cs.getInt(4), puntaje, cs.getInt(5) == 1);
         }
     }
 
