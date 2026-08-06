@@ -485,7 +485,7 @@ public class VentanaContenidoCurso extends VentanaBase {
     private void abrirTest() {
         if (!iniciarTransicionUnica()) return;
         dispose();
-        new VentanaTest(curso, emailUsuario, () ->
+        new VentanaTest(curso, emailUsuario, nombreUsuario, () ->
             new VentanaContenidoCurso(curso, emailUsuario, nombreUsuario, alVolver).setVisible(true)
         ).setVisible(true);
     }

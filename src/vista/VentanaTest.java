@@ -4,9 +4,12 @@ import controlador.ControladorTest;
 import modelo.Curso;
 import modelo.OpcionTest;
 import modelo.PreguntaTest;
+import modelo.ResultadoTestGuardado;
 import vista.componentes.BarraProgreso;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoCurso;
 import vista.componentes.IconoVectorial;
+import vista.componentes.PanelCertificado;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -26,6 +29,7 @@ public class VentanaTest extends VentanaBase {
     private final ControladorTest controlador = new ControladorTest();
     private final Curso curso;
     private final String emailUsuario;
+    private final String nombreUsuario;
     private final Runnable alVolver;
 
     private List<PreguntaTest> preguntas = new ArrayList<>();
@@ -35,12 +39,14 @@ public class VentanaTest extends VentanaBase {
     private BarraProgreso barraProgreso;
     private JLabel textoPreguntaLbl;
     private JButton botonVolverEncabezado;
+    private JPanel panelBotonesEncabezado;
     private JPanel panelPreguntas;
 
-    public VentanaTest(Curso curso, String emailUsuario, Runnable alVolver) {
+    public VentanaTest(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
         super("Educ G", EXIT_ON_CLOSE);
         this.curso = curso;
         this.emailUsuario = emailUsuario;
+        this.nombreUsuario = nombreUsuario;
         this.alVolver = alVolver;
         cargarPreguntas();
         construirUI();
@@ -81,15 +87,23 @@ public class VentanaTest extends VentanaBase {
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel tituloLbl = new JLabel("📝  Test: " + curso.getTitulo());
+        // Ícono real del curso (mismo componente que VentanaContenidoCurso) en vez de un emoji
+        // suelto en el texto: "📝" no está garantizado en todas las fuentes del sistema y caía a
+        // un glifo vacío — mismo criterio que DialogoPersonalizado con sus íconos vectoriales.
+        JPanel filaTitulo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filaTitulo.setOpaque(false);
+        filaTitulo.setAlignmentX(LEFT_ALIGNMENT);
+        filaTitulo.add(IconoCurso.crearEtiqueta(curso, 36));
+        JLabel tituloLbl = new JLabel("Test: " + curso.getTitulo());
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
         tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
+        filaTitulo.add(tituloLbl);
 
         textoPreguntaLbl = new JLabel("Pregunta 1 de " + preguntas.size());
         textoPreguntaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
         textoPreguntaLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
 
-        bloqueTitulo.add(tituloLbl);
+        bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(textoPreguntaLbl);
 
@@ -100,8 +114,12 @@ public class VentanaTest extends VentanaBase {
             alVolver.run();
         });
 
+        panelBotonesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        panelBotonesEncabezado.setOpaque(false);
+        panelBotonesEncabezado.add(botonVolverEncabezado);
+
         fila1.add(bloqueTitulo, BorderLayout.WEST);
-        fila1.add(botonVolverEncabezado, BorderLayout.EAST);
+        fila1.add(panelBotonesEncabezado, BorderLayout.EAST);
 
         encabezado.add(fila1);
         encabezado.add(Box.createVerticalStrut(12));
@@ -235,12 +253,42 @@ public class VentanaTest extends VentanaBase {
         }
 
         try {
-            int puntaje = controlador.corregirYGuardar(emailUsuario, curso.getId(), preguntas, respuestasSeleccionadas);
+            ResultadoTestGuardado resultado = controlador.corregirYGuardar(emailUsuario, curso.getId(), preguntas, respuestasSeleccionadas);
+            int puntaje = resultado.getPuntaje();
             boolean aprobado = puntaje >= ControladorTest.puntajeAprobacion();
             mostrarResultados(puntaje, aprobado);
+            if (resultado.isCertificadoNuevo()) {
+                enviarCertificadoPorEmailEnSegundoPlano(puntaje);
+            }
         } catch (SQLException ex) {
             DialogoPersonalizado.mostrarError(this, "No se pudo guardar el resultado:\n" + ex.getMessage());
         }
+    }
+
+    /** Solo se llama la primera vez que se aprueba este curso (ver {@code certificadoNuevo}).
+     * Best-effort: si el envío falla, el certificado sigue disponible en la app de todos modos
+     * (botón "Ver Certificado"), así que no interrumpe al usuario con un diálogo de error — igual
+     * que {@code VentanaContenidoCurso.guardarProgreso()} con otras llamadas no críticas. */
+    private void enviarCertificadoPorEmailEnSegundoPlano(int puntaje) {
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                byte[] png = new PanelCertificado(curso, nombreUsuario, puntaje).renderizarComoPng();
+                controlador.enviarCertificadoPorEmail(emailUsuario, nombreUsuario, curso.getTitulo(), puntaje, png);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                } catch (Exception ex) {
+                    System.err.println("No se pudo enviar el certificado por email: "
+                        + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+                }
+            }
+        };
+        worker.execute();
     }
 
     /** Reemplaza el cuerpo de la ventana por el resumen del puntaje y la revisión pregunta por pregunta. */
@@ -249,12 +297,42 @@ public class VentanaTest extends VentanaBase {
             ? "¡Aprobaste con " + puntaje + " / 100!"
             : "No aprobaste  ·  " + puntaje + " / 100");
         barraProgreso.setProgreso(preguntas.size(), preguntas.size());
-        botonVolverEncabezado.setText("Volver");
+        actualizarBotonesEncabezado(aprobado, puntaje);
 
         panelPreguntas.removeAll();
         panelPreguntas.add(construirResultados(puntaje, aprobado), BorderLayout.CENTER);
         panelPreguntas.revalidate();
         panelPreguntas.repaint();
+    }
+
+    /** Al terminar el test, el "Cancelar" del encabezado deja de tener sentido: si aprobó, se
+     * reemplaza por "Ver Certificado" + "Ir a Mis Cursos"; si no, sigue habiendo un solo botón
+     * para volver (no hay certificado que mostrar todavía). */
+    private void actualizarBotonesEncabezado(boolean aprobado, int puntaje) {
+        panelBotonesEncabezado.removeAll();
+        if (aprobado) {
+            JButton botonCertificado = FabricaUI.crearBotonSecundarioPequeno("Ver Certificado");
+            botonCertificado.addActionListener(e ->
+                new VentanaCertificado(curso, nombreUsuario, puntaje).setVisible(true));
+
+            // A diferencia de alVolver (que vuelve a VentanaContenidoCurso, de donde se entró al
+            // test), este botón va directo a la pestaña "Mis Cursos" — mismo patrón de navegación
+            // que VentanaContenidoCurso.abrirTest()/VentanaMisCursos al entrar a un curso.
+            JButton botonMisCursos = FabricaUI.crearBotonSecundarioPequeno("Ir a Mis Cursos", IconoVectorial.Tipo.VOLVER);
+            botonMisCursos.addActionListener(e -> {
+                if (!iniciarTransicionUnica()) return;
+                dispose();
+                new VentanaMisCursos(emailUsuario).setVisible(true);
+            });
+
+            panelBotonesEncabezado.add(botonCertificado);
+            panelBotonesEncabezado.add(botonMisCursos);
+        } else {
+            botonVolverEncabezado.setText("Volver");
+            panelBotonesEncabezado.add(botonVolverEncabezado);
+        }
+        panelBotonesEncabezado.revalidate();
+        panelBotonesEncabezado.repaint();
     }
 
     private Component construirResultados(int puntaje, boolean aprobado) {

@@ -45,7 +45,7 @@ public class DialogoVerItemPlanEstudio extends JDialog {
         JScrollPane scroll = new JScrollPane(contenido);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
-        scroll.setPreferredSize(new Dimension(480, 420));
+        scroll.setPreferredSize(new Dimension(700, 620));
         raiz.add(scroll, BorderLayout.CENTER);
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -56,7 +56,8 @@ public class DialogoVerItemPlanEstudio extends JDialog {
         botones.add(botonCerrar);
         raiz.add(botones, BorderLayout.SOUTH);
 
-        setResizable(false);
+        setResizable(true);
+        setMinimumSize(new Dimension(480, 360));
         pack();
         setLocationRelativeTo(padre);
         getRootPane().setDefaultButton(botonCerrar);
@@ -80,7 +81,7 @@ public class DialogoVerItemPlanEstudio extends JDialog {
         area.setForeground(EstiloUI.TEXTO_PRIMARIO);
         area.setBorder(null);
         area.setAlignmentX(LEFT_ALIGNMENT);
-        area.setMaximumSize(new Dimension(420, Integer.MAX_VALUE));
+        area.setMaximumSize(new Dimension(640, Integer.MAX_VALUE));
 
         panel.add(lbl);
         panel.add(Box.createVerticalStrut(4));

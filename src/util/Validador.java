@@ -29,6 +29,14 @@ public final class Validador {
         "^[0-9+\\-()\\s]{6,20}$"
     );
 
+    /** Clave de ícono de curso ({@code imagenes.clave}): minúsculas, dígitos y guion bajo, 3-50 caracteres */
+    private static final Pattern CLAVE_ICONO_PATTERN = Pattern.compile(
+        "^[a-z0-9_]{3,50}$"
+    );
+
+    /** Claves reservadas para imágenes que no son íconos de curso (logo/ícono de ventana de la app) */
+    private static final java.util.Set<String> CLAVES_ICONO_RESERVADAS = java.util.Set.of("logo_app", "icono_ventana");
+
     private Validador() {}
 
     public static boolean esEmailValido(String email) {
@@ -60,5 +68,25 @@ public final class Validador {
     /** Teléfono: dígitos y símbolos habituales (+, -, paréntesis), 6 a 20 caracteres */
     public static boolean esTelefonoValido(String telefono) {
         return telefono != null && TELEFONO_PATTERN.matcher(telefono).matches();
+    }
+
+    /** Código de verificación: 6 caracteres en mayúsculas alfanuméricos (A-Z0-9) */
+    public static boolean esCodigoVerificacionValido(String codigo) {
+        return codigo != null && codigo.matches("^[A-Z0-9]{6}$");
+    }
+
+    /** Clave de ícono de curso: minúsculas/dígitos/guion bajo, 3-50 caracteres, sin las reservadas de la app */
+    public static boolean esClaveIconoValida(String clave) {
+        return clave != null
+            && CLAVE_ICONO_PATTERN.matcher(clave).matches()
+            && !CLAVES_ICONO_RESERVADAS.contains(clave);
+    }
+
+    /** Etiqueta de ícono de curso: 2-50 caracteres, sin símbolos de inyección */
+    public static boolean esEtiquetaIconoValida(String etiqueta) {
+        return etiqueta != null
+            && etiqueta.length() >= 2
+            && etiqueta.length() <= 50
+            && !tieneRiesgoInyeccion(etiqueta);
     }
 }

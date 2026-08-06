@@ -85,15 +85,31 @@ public class VentanaCrearCurso extends VentanaBase {
         tarjeta.setBorder(new EmptyBorder(24, 28, 20, 28));
         tarjeta.add(panelContenido, BorderLayout.CENTER);
 
+        JPanel contenedorPasos = new JPanel(new BorderLayout());
+        contenedorPasos.setOpaque(false);
+        contenedorPasos.add(tarjeta, BorderLayout.CENTER);
+        contenedorPasos.add(construirBarraNavegacion(), BorderLayout.SOUTH);
+
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.setBorder(new EmptyBorder(0, 40, 30, 40));
-        wrapper.add(tarjeta, BorderLayout.CENTER);
-        wrapper.add(construirBarraNavegacion(), BorderLayout.SOUTH);
+        wrapper.add(construirTituloSeccion("Crear Curso"), BorderLayout.NORTH);
+        wrapper.add(contenedorPasos, BorderLayout.CENTER);
 
         raiz.add(wrapper, BorderLayout.CENTER);
 
         irAPaso(1);
+    }
+
+    /** Mismo estilo de título de sección que el resto del panel de administrador
+     * (ver {@code VentanaAdminAlumnos}/{@code VentanaAdminCursos}). */
+    private JLabel construirTituloSeccion(String texto) {
+        JLabel tituloSeccion = new JLabel(texto);
+        tituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        tituloSeccion.setForeground(Color.WHITE);
+        tituloSeccion.setBorder(new EmptyBorder(20, 24, 12, 24));
+        tituloSeccion.setOpaque(false);
+        return tituloSeccion;
     }
 
     private JPanel construirEncabezado() {

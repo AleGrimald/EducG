@@ -63,7 +63,7 @@ public class TarjetaCurso extends JPanel {
         descLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         descLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
         descLbl.setAlignmentX(LEFT_ALIGNMENT);
-        descLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
+        descLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
 
         // ── Divisor ─────────────────────────────────────────────────────────
         JSeparator sep = new JSeparator();
@@ -81,12 +81,24 @@ public class TarjetaCurso extends JPanel {
         topicosPanel.setOpaque(false);
         topicosPanel.setLayout(new BoxLayout(topicosPanel, BoxLayout.Y_AXIS));
         topicosPanel.setAlignmentX(LEFT_ALIGNMENT);
-        for (String topico : curso.getTopicos()) {
-            JLabel t = new JLabel("• " + topico);
+        topicosPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
+
+        String[] topicos = curso.getTopicos();
+        int maxTopicos = Math.min(3, topicos.length);
+        for (int i = 0; i < maxTopicos; i++) {
+            JLabel t = new JLabel("• " + topicos[i]);
             t.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             t.setForeground(EstiloUI.TEXTO_SECUNDARIO);
             t.setAlignmentX(LEFT_ALIGNMENT);
             topicosPanel.add(t);
+        }
+
+        if (topicos.length > 3) {
+            JLabel masTopicos = new JLabel("• y " + (topicos.length - 3) + " más");
+            masTopicos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            masTopicos.setForeground(EstiloUI.TEXTO_SECUNDARIO);
+            masTopicos.setAlignmentX(LEFT_ALIGNMENT);
+            topicosPanel.add(masTopicos);
         }
 
         // ── Botón Inscribirse / Iniciar Curso ────────────────────────────────

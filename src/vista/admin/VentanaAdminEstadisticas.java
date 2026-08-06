@@ -86,11 +86,12 @@ public class VentanaAdminEstadisticas extends VentanaBase {
         pestanas.setOpaque(false);
         pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        String[] labels = {"Alumnos", "Cursos", "Estadísticas"};
+        String[] labels = {"Alumnos", "Cursos", "Estadísticas", "Configuración"};
         Runnable[] acciones = {
             () -> abrirVentana(new VentanaAdminAlumnos(emailAdmin)),
             () -> abrirVentana(new VentanaAdminCursos(emailAdmin)),
-            () -> {}
+            () -> {},
+            () -> abrirVentana(new VentanaAdminConfiguracionUI(emailAdmin))
         };
 
         for (int i = 0; i < labels.length; i++) {

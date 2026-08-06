@@ -2,6 +2,7 @@ package dao;
 
 import modelo.EstadisticasUsuario;
 import modelo.ResultadoTest;
+import modelo.ResultadoTestGuardado;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -13,8 +14,8 @@ public interface ResultadoTestDAO {
 
     EstadisticasUsuario obtenerEstadisticas(String email) throws SQLException;
 
-    /** @return el id del resultado creado */
-    int registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException;
+    /** @return el id del resultado creado y si esta aprobación generó un certificado nuevo */
+    ResultadoTestGuardado registrarResultadoTest(String email, int cursoId, int puntaje) throws SQLException;
 
     void registrarRespuesta(int testResultadoId, int preguntaId, int opcionElegidaId) throws SQLException;
 

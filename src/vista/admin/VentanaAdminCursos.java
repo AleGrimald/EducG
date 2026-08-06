@@ -190,11 +190,12 @@ public class VentanaAdminCursos extends VentanaBase {
         pestanas.setOpaque(false);
         pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        String[] labels = {"Alumnos", "Cursos", "Estadísticas"};
+        String[] labels = {"Alumnos", "Cursos", "Estadísticas", "Configuración"};
         Runnable[] acciones = {
             () -> abrirVentana(new VentanaAdminAlumnos(emailAdmin)),
             () -> {},
-            () -> abrirVentana(new VentanaAdminEstadisticas(emailAdmin))
+            () -> abrirVentana(new VentanaAdminEstadisticas(emailAdmin)),
+            () -> abrirVentana(new VentanaAdminConfiguracionUI(emailAdmin))
         };
 
         for (int i = 0; i < labels.length; i++) {
@@ -326,7 +327,8 @@ public class VentanaAdminCursos extends VentanaBase {
             int filaModelo = tabla.convertRowIndexToModel(fila);
             byte[] datosPng = (byte[]) valor;
             String titulo = filaModelo < cursos.size() ? cursos.get(filaModelo).getTitulo() : "";
-            return IconoCurso.crearEtiqueta(datosPng, titulo, 28);
+            String clave = filaModelo < cursos.size() ? cursos.get(filaModelo).getEmojiClave() : null;
+            return IconoCurso.crearEtiqueta(datosPng, clave, titulo, 28);
         });
     }
 
@@ -478,7 +480,7 @@ public class VentanaAdminCursos extends VentanaBase {
         JPanel filaTituloCurso = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         filaTituloCurso.setOpaque(false);
         filaTituloCurso.setBorder(new EmptyBorder(0, 0, 8, 0));
-        filaTituloCurso.add(IconoCurso.crearEtiqueta(cursoSeleccionado.getEmoji(), cursoSeleccionado.getTitulo(), 30));
+        filaTituloCurso.add(IconoCurso.crearEtiqueta(cursoSeleccionado.getEmoji(), cursoSeleccionado.getEmojiClave(), cursoSeleccionado.getTitulo(), 30));
         JLabel tituloCurso = new JLabel(cursoSeleccionado.getTitulo());
         tituloCurso.setFont(EstiloUI.FUENTE_SECCION);
         tituloCurso.setForeground(EstiloUI.TEXTO_PRIMARIO);

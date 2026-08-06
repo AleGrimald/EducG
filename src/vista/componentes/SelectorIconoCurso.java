@@ -13,7 +13,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Selector de ícono de curso: combo con los PNG de tecnología conocidos + botón para subir un
@@ -47,6 +49,9 @@ public class SelectorIconoCurso extends JPanel {
 
     /** Bytes del archivo recién subido (clave sintética {@link #CLAVE_SUBIDO}), o null. */
     private byte[] datosSubidos;
+    /** Clave/etiqueta que el admin eligió para el archivo subido en {@link DialogoNuevoIcono}, o null. */
+    private String claveSubida;
+    private String etiquetaSubida;
     /** Bytes del ícono personalizado que ya tenía el curso al editar (clave real, no preset), o null. */
     private byte[] datosClaveActual;
     private String claveActual;
@@ -74,6 +79,8 @@ public class SelectorIconoCurso extends JPanel {
         quitarEntradaDinamica(CLAVE_SUBIDO);
         quitarEntradaDinamica(this.claveActual);
         datosSubidos = null;
+        claveSubida = null;
+        etiquetaSubida = null;
 
         if (claveActual == null || claveActual.isBlank()) {
             combo.setSelectedItem("");
@@ -102,6 +109,8 @@ public class SelectorIconoCurso extends JPanel {
             combo.setSelectedItem("");
         } else if (seleccion.esArchivoSubido()) {
             datosSubidos = seleccion.getDatos();
+            claveSubida = seleccion.getClave();
+            etiquetaSubida = seleccion.getEtiqueta();
             agregarEntradaSubido();
             combo.setSelectedItem(CLAVE_SUBIDO);
         } else {
@@ -113,7 +122,7 @@ public class SelectorIconoCurso extends JPanel {
         Object valor = combo.getSelectedItem();
         String clave = valor == null ? "" : (String) valor;
         if (clave.isEmpty()) return SeleccionIcono.ninguno();
-        if (clave.equals(CLAVE_SUBIDO)) return SeleccionIcono.deArchivoSubido(datosSubidos);
+        if (clave.equals(CLAVE_SUBIDO)) return SeleccionIcono.deArchivoSubido(datosSubidos, claveSubida, etiquetaSubida);
         return SeleccionIcono.deClave(clave);
     }
 
@@ -130,12 +139,26 @@ public class SelectorIconoCurso extends JPanel {
                 DialogoPersonalizado.mostrarError(padre, "El archivo elegido no es una imagen PNG válida.");
                 return;
             }
+
+            DialogoNuevoIcono.Resultado resultado = DialogoNuevoIcono.mostrar(padre, datos, clavesReservadas());
+            if (resultado == null) return; // el admin canceló el diálogo de clave/etiqueta
+
             datosSubidos = datos;
+            claveSubida = resultado.clave;
+            etiquetaSubida = resultado.etiqueta;
             agregarEntradaSubido();
             combo.setSelectedItem(CLAVE_SUBIDO);
         } catch (IOException ex) {
             DialogoPersonalizado.mostrarError(padre, "No se pudo leer el archivo: " + ex.getMessage());
         }
+    }
+
+    /** Claves a evitar al elegir una nueva en {@link DialogoNuevoIcono}: presets + la ya asignada al editar. */
+    private Set<String> clavesReservadas() {
+        Set<String> claves = new HashSet<>();
+        for (String[] par : PRESETS) if (!par[0].isEmpty()) claves.add(par[0]);
+        if (claveActual != null) claves.add(claveActual);
+        return claves;
     }
 
     private void agregarEntradaSubido() {

@@ -26,7 +26,7 @@ import java.util.List;
 /** Módulo Alumnos del panel de administrador: alta, búsqueda por DNI, listado, modificación y bajas. */
 public class VentanaAdminAlumnos extends VentanaBase {
 
-    private static final int COLUMNA_ACCIONES = 7;
+    private static final int COLUMNA_ACCIONES = 6;
 
     private final ControladorAdminAlumnos controlador = new ControladorAdminAlumnos();
     private final String emailAdmin;
@@ -56,14 +56,15 @@ public class VentanaAdminAlumnos extends VentanaBase {
         contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setBorder(new EmptyBorder(16, 24, 24, 24));
 
+
         contenido.add(construirBarraSuperior(), BorderLayout.NORTH);
-        contenido.add(construirTabla(), BorderLayout.CENTER);
+        contenido.add(construirPanelTablaCentrada(), BorderLayout.CENTER);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.setBorder(new EmptyBorder(0, 20, 20, 20));
         wrapper.add(construirTituloSeccion("Alumnos"), BorderLayout.NORTH);
-        wrapper.add(contenido, BorderLayout.CENTER);
+        wrapper.add(construirPanelContenidoCentrado(contenido), BorderLayout.CENTER);
         raiz.add(wrapper, BorderLayout.CENTER);
     }
 
@@ -74,6 +75,37 @@ public class VentanaAdminAlumnos extends VentanaBase {
         tituloSeccion.setBorder(new EmptyBorder(20, 24, 12, 24));
         tituloSeccion.setOpaque(false);
         return tituloSeccion;
+    }
+
+    private JPanel construirPanelContenidoCentrado(JPanel contenido) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridy = 0;
+        gbc.weighty = 1;
+
+        // Espaciador izquierdo (20%)
+        gbc.gridx = 0;
+        gbc.weightx = 0.2;
+        JPanel izq = new JPanel();
+        izq.setOpaque(false);
+        panel.add(izq, gbc);
+
+        // Contenido (60%)
+        gbc.gridx = 1;
+        gbc.weightx = 0.60;
+        panel.add(contenido, gbc);
+
+        // Espaciador derecho (20%)
+        gbc.gridx = 2;
+        gbc.weightx = 0.2;
+        JPanel der = new JPanel();
+        der.setOpaque(false);
+        panel.add(der, gbc);
+
+        return panel;
     }
 
     private JPanel construirEncabezado() {
@@ -116,11 +148,12 @@ public class VentanaAdminAlumnos extends VentanaBase {
         pestanas.setOpaque(false);
         pestanas.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        String[] labels = {"Alumnos", "Cursos", "Estadísticas"};
+        String[] labels = {"Alumnos", "Cursos", "Estadísticas", "Configuración"};
         Runnable[] acciones = {
             () -> {},
             () -> abrirVentana(new VentanaAdminCursos(emailAdmin)),
-            () -> abrirVentana(new VentanaAdminEstadisticas(emailAdmin))
+            () -> abrirVentana(new VentanaAdminEstadisticas(emailAdmin)),
+            () -> abrirVentana(new VentanaAdminConfiguracionUI(emailAdmin))
         };
 
         for (int i = 0; i < labels.length; i++) {
@@ -179,7 +212,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
         panelBusqueda.setOpaque(false);
 
         campoBusquedaDni = FabricaUI.crearCampo();
-        campoBusquedaDni.setPreferredSize(new Dimension(180, EstiloUI.ALTO_CAMPO));
+        campoBusquedaDni.setPreferredSize(new Dimension(250, EstiloUI.ALTO_CAMPO));
         FiltroCaracteres.aplicarA(campoBusquedaDni, "[0-9]");
 
         JButton botonBuscar = FabricaUI.crearBotonSecundarioPequeno("Buscar por DNI", IconoVectorial.Tipo.BUSCAR);
@@ -203,54 +236,123 @@ public class VentanaAdminAlumnos extends VentanaBase {
         tabla.setRowHeight(44);
         tabla.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         tabla.setSelectionBackground(new Color(220, 235, 255));
+        tabla.setSelectionForeground(EstiloUI.TEXTO_PRIMARIO);
         tabla.setShowGrid(false);
         tabla.setIntercellSpacing(new Dimension(0, 0));
-        // Ancho fijo por columna (ver fijarAnchoColumnas): que el ancho de la ventana
-        // no achique/estire las columnas de datos, a diferencia del auto-resize por defecto.
-        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         // Sin esto, el viewport pinta gris por debajo de las filas cuando hay pocos
         // registros (JTable.getPreferredScrollableViewportSize() por defecto es 450x400).
         tabla.setFillsViewportHeight(true);
 
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setBorder(BorderFactory.createLineBorder(EstiloUI.BORDE, 1));
+        // Reservado siempre (en vez de AS_NEEDED, el default): si el ancho de columnas se calcula
+        // antes de que la barra aparezca (pocas filas al abrir, muchas después de una búsqueda) y
+        // recién ahí se hace necesaria, la tabla no vuelve a recalcular su ancho — la barra le come
+        // espacio al viewport y la última columna (Acciones) queda parcialmente tapada. Reservando
+        // el espacio siempre, el ancho disponible es el mismo desde el primer render, con o sin
+        // filas suficientes para necesitar scroll.
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         scroll.getHorizontalScrollBar().setUnitIncrement(14);
         return scroll;
     }
 
+    private JPanel construirPanelTablaCentrada() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridy = 0;
+        gbc.weighty = 1;
+
+        // Espaciador izquierdo (15%)
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        JPanel izq = new JPanel();
+        izq.setOpaque(false);
+        panel.add(izq, gbc);
+
+        // Contenedor de tabla (70%)
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        panel.add(construirContenedorTabla(), gbc);
+
+        // Espaciador derecho (15%)
+        gbc.gridx = 2;
+        gbc.weightx = 0;
+        JPanel der = new JPanel();
+        der.setOpaque(false);
+        panel.add(der, gbc);
+
+        return panel;
+    }
+
+    private JPanel construirContenedorTabla() {
+        JPanel contenedor = new JPanel(new GridBagLayout());
+        contenedor.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridy = 0;
+        gbc.weighty = 1;
+
+        // Espaciador izquierdo (2.5%)
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        JPanel izq = new JPanel();
+        izq.setOpaque(false);
+        contenedor.add(izq, gbc);
+
+        // Tabla (95%)
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        contenedor.add(construirTabla(), gbc);
+
+        // Espaciador derecho (2.5%)
+        gbc.gridx = 2;
+        gbc.weightx = 0;
+        JPanel der = new JPanel();
+        der.setOpaque(false);
+        contenedor.add(der, gbc);
+
+        return contenedor;
+    }
+
     /**
-     * Ancho fijo por columna, calculado a partir de la cantidad máxima de caracteres que puede
-     * traer cada campo: DNI (9 dígitos, {@code Validador.esDniValido}), teléfono (20 caracteres,
-     * {@code Validador.esTelefonoValido}) y fecha (10 = "aaaa-mm-dd") son exactos. Nombre/apellido/
-     * email no tienen un tope realista chico (hasta 100/255 en la base) — se usa un ancho generoso
-     * pero acotado en vez del máximo literal, que haría la tabla inusable.
+     * Ancho por columna: un {@code preferido} (ideal, calculado a partir de la cantidad máxima de
+     * caracteres que puede traer cada campo — DNI 9 dígitos y fecha "aaaa-mm-dd" son exactos;
+     * nombre/apellido/email/teléfono no tienen un tope realista chico, se usa uno generoso pero
+     * acotado) y un {@code minimo} bien por debajo de ese ideal. La diferencia importa: con
+     * {@code AUTO_RESIZE_ALL_COLUMNS}, Swing solo puede comprimir una columna hasta su
+     * {@code minWidth} — si el ancho preferido se usara también como mínimo (como antes), la tabla
+     * no podía achicarse por debajo de esa suma y aparecía scroll horizontal en cualquier ventana
+     * más angosta que eso. Con un mínimo chico, la tabla siempre se ajusta exactamente al ancho
+     * disponible del contenedor, sin scroll — a costa de recortar texto en ventanas muy angostas.
      */
     private void fijarAnchoColumnas() {
         FontMetrics fm = tabla.getFontMetrics(tabla.getFont());
-        fijarAncho(0, anchoPara(fm, 19));  // Nombre
-        fijarAncho(1, anchoPara(fm, 19));  // Apellido
-        fijarAncho(2, anchoPara(fm, 13));   // DNI
-        fijarAncho(3, anchoPara(fm, 35));  // Email
-        fijarAncho(4, anchoPara(fm, 22));  // Teléfono
-        fijarAncho(5, anchoPara(fm, 15));  // Registrado
-        fijarAncho(6, anchoPara(fm, 10));   // Estado
+        fijarAncho(0, anchoPara(fm, 20), anchoPara(fm, 8));   // Nombre
+        fijarAncho(1, anchoPara(fm, 20), anchoPara(fm, 9));   // Apellido
+        fijarAncho(2, anchoPara(fm, 15), anchoPara(fm, 9));   // DNI (9 dígitos, siempre completo)
+        fijarAncho(3, anchoPara(fm, 35), anchoPara(fm, 10));  // Email
+        fijarAncho(4, anchoPara(fm, 22), anchoPara(fm, 10));  // Teléfono
+        fijarAncho(5, anchoPara(fm, 15), anchoPara(fm, 10));  // Registrado ("aaaa-mm-dd", siempre completo)
 
         centrar(2); // DNI
         centrar(4); // Teléfono
         centrar(5); // Registrado
-        centrar(6); // Estado
     }
 
     private int anchoPara(FontMetrics fm, int caracteres) {
         return fm.charWidth('0') * caracteres + 28;
     }
 
-    private void fijarAncho(int indice, int ancho) {
+    private void fijarAncho(int indice, int preferido, int minimo) {
         TableColumn columna = tabla.getColumnModel().getColumn(indice);
-        columna.setMinWidth(ancho);
-        columna.setMaxWidth(ancho);
-        columna.setPreferredWidth(ancho);
+        columna.setMinWidth(minimo);
+        columna.setPreferredWidth(preferido);
     }
 
     private void centrar(int indice) {
@@ -289,7 +391,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
     private void actualizarFilas(List<AlumnoAdmin> lista) {
         this.alumnos = lista;
 
-        String[] columnas = {"Nombre", "Apellido", "DNI", "Email", "Teléfono", "Registrado", "Estado", "Acciones"};
+        String[] columnas = {"Nombre", "Apellido", "DNI", "Email", "Teléfono", "Registrado", "Acciones"};
         Object[][] datos = new Object[lista.size()][columnas.length];
         for (int i = 0; i < lista.size(); i++) {
             AlumnoAdmin a = lista.get(i);
@@ -297,7 +399,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
                 ? a.getFechaRegistro().substring(0, 10) : String.valueOf(a.getFechaRegistro());
             datos[i] = new Object[]{
                 a.getNombre(), a.getApellido(), String.valueOf(a.getDni()), a.getEmail(), a.getTelefono(),
-                fecha, a.isActivo() ? "Activo" : "Inactivo", ""
+                fecha, ""
             };
         }
 

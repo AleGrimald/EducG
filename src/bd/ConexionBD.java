@@ -29,7 +29,7 @@ public class ConexionBD {
     private static final String URL =
             "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
                     + "?useSSL=false&allowPublicKeyRetrieval=true"
-                    + "&serverTimezone=UTC&characterEncoding=UTF-8"
+                    + "&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8"
                     + "&connectionCollation=utf8mb4_unicode_ci";
 
     private static Connection connection;

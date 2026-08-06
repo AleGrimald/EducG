@@ -4,6 +4,7 @@ import controlador.ControladorRegistro;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.FiltroCaracteres;
 import vista.componentes.IconoVectorial;
+import vista.componentes.VentanaVerificacionCodigo;
 import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
@@ -301,9 +302,17 @@ public class VentanaRegistro extends VentanaBase {
 
         try {
             if (controlador.registrar(nombre, apellido, dni, telefono, email, password, confirmar)) {
-                DialogoPersonalizado exito = new DialogoPersonalizado(this, DialogoPersonalizado.TipoDialogo.EXITO,
-                    "¡Registro exitoso!", "¡Cuenta creada exitosamente! Ya podés iniciar sesión.");
-                exito.establecerListenerCierre(this::volverAlLogin);
+                // Registro exitoso: abrir modal de verificación
+                VentanaVerificacionCodigo ventanaVerif = new VentanaVerificacionCodigo(
+                    this, Long.parseLong(dni), email, nombre);
+                ventanaVerif.establecerListenerVerificacionExitosa(() -> {
+                    DialogoPersonalizado.mostrarExito(VentanaRegistro.this,
+                        "¡Cuenta verificada exitosamente!\nYa podés iniciar sesión.",
+                        VentanaRegistro.this::volverAlLogin);
+                });
+                ventanaVerif.setVisible(true);
+                // Si cierra sin verificar: también volver al login (la cuenta sigue inactiva)
+                // Se manejará en el WindowListener de ventanaVerif
             } else {
                 mostrarError("El correo electrónico ya está registrado.\nUsá otro o iniciá sesión.");
             }
