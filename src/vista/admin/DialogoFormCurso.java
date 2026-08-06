@@ -45,7 +45,7 @@ public class DialogoFormCurso extends JDialog {
         int fila = 0;
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Ícono"), new Insets(0, 0, 6, 0));
-        campoEmoji = new SelectorIconoCurso(this);
+        campoEmoji = new SelectorIconoCurso(padre);
         agregarFila(raiz, gbc, fila++, campoEmoji, new Insets(0, 0, 14, 0));
 
         agregarFila(raiz, gbc, fila++, FabricaUI.crearEtiqueta("Título"), new Insets(0, 0, 6, 0));

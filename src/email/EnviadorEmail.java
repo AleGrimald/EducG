@@ -163,6 +163,13 @@ public class EnviadorEmail {
         bw.write(comando + "\r\n");
         bw.flush();
         String respuesta = leerRespuesta(br);
+        if (respuesta.isEmpty()) {
+            // No se incluye `comando` en el mensaje: en los pasos de AUTH LOGIN es directamente
+            // el usuario/contraseña en base64, y este mensaje puede terminar mostrado en un
+            // diálogo de la UI (VentanaVerificacionCodigo) — nunca hay que filtrar eso.
+            throw new EmailException("El servidor SMTP cerró la conexión sin responder "
+                + "(posible bloqueo de red, firewall, o credenciales rechazadas).");
+        }
         String codigo = respuesta.substring(0, 3);
         int codigoNum = Integer.parseInt(codigo);
         if (codigoNum >= 400) {

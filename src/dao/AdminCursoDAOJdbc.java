@@ -10,7 +10,6 @@ import modelo.SeleccionIcono;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Implementación de {@link AdminCursoDAO} sobre stored procedures. {@link #guardarCursoCompleto}
@@ -273,22 +272,27 @@ public class AdminCursoDAOJdbc implements AdminCursoDAO {
      * Resuelve una {@link SeleccionIcono} al {@code id_imagen} que esperan
      * {@code sp_crear_curso}/{@code sp_modificar_curso}. Recibe la conexión ya abierta del
      * llamador en vez de abrir la propia — ver el comentario en {@link #modificarCurso}.
-     * Si es un archivo recién subido, lo inserta en {@code imagenes} con una clave generada
-     * (así una edición posterior que no toque el ícono puede re-resolverlo por esa misma clave,
-     * en vez de insertar una fila nueva cada vez que se guarda el curso).
+     * Si es un archivo recién subido, lo inserta en {@code imagenes} con la clave/etiqueta que
+     * eligió el admin en {@code SelectorIconoCurso} — a partir de ahí queda disponible como
+     * ícono reutilizable para cualquier curso (vía {@code sp_listar_iconos_curso}), no solo
+     * para este. Una edición posterior de este mismo curso que no toque el selector vuelve a
+     * resolver esa misma clave (rama {@code esClave()}) en vez de insertar una fila nueva.
      * @return null si no hay ícono elegido
      */
     private static Integer resolverIdImagen(Connection conn, SeleccionIcono icono) throws SQLException {
         if (icono == null || icono.esNinguno()) return null;
 
         if (icono.esArchivoSubido()) {
-            String claveGenerada = "custom_" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
-            try (CallableStatement cs = conn.prepareCall("{call sp_crear_imagen(?, ?, ?)}")) {
+            try (CallableStatement cs = conn.prepareCall("{call sp_crear_imagen(?, ?, ?, ?)}")) {
                 cs.setBytes(1, icono.getDatos());
-                cs.setString(2, claveGenerada);
-                cs.registerOutParameter(3, Types.INTEGER);
+                cs.setString(2, icono.getClave());
+                cs.setString(3, icono.getEtiqueta());
+                cs.registerOutParameter(4, Types.INTEGER);
                 cs.execute();
-                return cs.getInt(3);
+                return cs.getInt(4);
+            } catch (SQLIntegrityConstraintViolationException ex) {
+                throw new SQLException("Ya existe un ícono con la clave '" + icono.getClave()
+                    + "'. Elegí otra clave.", ex);
             }
         }
 

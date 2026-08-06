@@ -396,11 +396,27 @@ public class VentanaContenidoCurso extends VentanaBase {
         cajaTexto.getViewport().setOpaque(false);
         cajaTexto.setAlignmentX(LEFT_ALIGNMENT);
 
-        int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.55);
-        Dimension tamanoCaja = new Dimension(980, alturaCaja);
-        cajaTexto.setPreferredSize(tamanoCaja);
-        cajaTexto.setMinimumSize(tamanoCaja);
-        cajaTexto.setMaximumSize(tamanoCaja);
+        int anchoCaja = 980;
+        if (esEjercicio) {
+            // El enunciado de un ejercicio suele ser una o dos líneas: a diferencia del contenido
+            // teórico, acá NO conviene reservar el mismo bloque fijo (55% de la pantalla) — dejaba
+            // un hueco enorme entre el enunciado y "Tu respuesta". La caja se ajusta a su contenido
+            // real, con un tope razonable por si el enunciado es largo (sigue scrolleando adentro).
+            contenidoLbl.setSize(anchoCaja, Short.MAX_VALUE);
+            int alturaContenido = contenidoLbl.getPreferredSize().height + 20; // padding del body
+            int alturaMaxima = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.3);
+            Dimension tamanoCaja = new Dimension(anchoCaja, Math.min(alturaContenido, alturaMaxima));
+            cajaTexto.setPreferredSize(tamanoCaja);
+            cajaTexto.setMaximumSize(new Dimension(anchoCaja, alturaMaxima));
+        } else {
+            // Caja de tamaño fijo (55% del alto de pantalla): el texto scrollea adentro
+            // en vez de cambiar el alto de la caja, así los botones no se mueven según la lección.
+            int alturaCaja = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * 0.55);
+            Dimension tamanoCaja = new Dimension(anchoCaja, alturaCaja);
+            cajaTexto.setPreferredSize(tamanoCaja);
+            cajaTexto.setMinimumSize(tamanoCaja);
+            cajaTexto.setMaximumSize(tamanoCaja);
+        }
 
         return cajaTexto;
     }
