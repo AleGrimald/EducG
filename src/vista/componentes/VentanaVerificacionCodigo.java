@@ -39,11 +39,16 @@ public class VentanaVerificacionCodigo extends JDialog {
 
         setUndecorated(false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(420, 300);
-        setLocationRelativeTo(padre);
         setResizable(false);
 
         construirUI();
+
+        // pack() en vez de un setSize() fijo: con BotonRedondeado calculando su propio ancho vía
+        // FontMetrics (y un email largo alargando etiquetaInfoEmail), un tamaño adivinado a mano
+        // queda corto tarde o temprano y corta contenido contra el borde de la ventana — mismo
+        // criterio que DialogoNuevoIcono.
+        pack();
+        setLocationRelativeTo(padre);
 
         if (dniArg != null && emailArg != null) {
             // Post-registro: enviar código automáticamente
@@ -85,6 +90,9 @@ public class VentanaVerificacionCodigo extends JDialog {
         if (dniArg == null) {
             raiz.add(FabricaUI.crearEtiqueta("DNI"), generarGbc(gbc, fila++, new Insets(0, 0, 6, 0)));
             campoDni = FabricaUI.crearCampo();
+            // Ancho mínimo explícito: sin la línea de email (flujo "Ya tengo código", sin
+            // dni/email conocidos) no hay ningún otro componente que le dé ancho a pack().
+            campoDni.setPreferredSize(new Dimension(280, EstiloUI.ALTO_CAMPO));
             FiltroCaracteres.aplicarA(campoDni, "[0-9]");
             raiz.add(campoDni, generarGbc(gbc, fila++, new Insets(0, 0, 15, 0)));
         } else {

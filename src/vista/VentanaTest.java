@@ -7,6 +7,7 @@ import modelo.PreguntaTest;
 import modelo.ResultadoTestGuardado;
 import vista.componentes.BarraProgreso;
 import vista.componentes.DialogoPersonalizado;
+import vista.componentes.IconoCurso;
 import vista.componentes.IconoVectorial;
 import vista.componentes.PanelCertificado;
 import vista.estilo.EstiloUI;
@@ -38,6 +39,7 @@ public class VentanaTest extends VentanaBase {
     private BarraProgreso barraProgreso;
     private JLabel textoPreguntaLbl;
     private JButton botonVolverEncabezado;
+    private JPanel panelBotonesEncabezado;
     private JPanel panelPreguntas;
 
     public VentanaTest(Curso curso, String emailUsuario, String nombreUsuario, Runnable alVolver) {
@@ -76,9 +78,18 @@ public class VentanaTest extends VentanaBase {
         // el texto/la barra de progreso de acá abajo están pensados para ese fondo oscuro
         // (blanco/celeste claro, track semitransparente blanco); con el fondo clarito del
         // módulo admin (240,245,250) quedaban casi invisibles.
-        JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(36, 91, 168, 221));
+        // setOpaque(false) + relleno a mano en paintComponent (en vez de setOpaque(true) con un
+        // Color de alpha<255 como fondo): marcar un panel "opaco" con un color translúcido hace
+        // que el RepaintManager lo trate como si se autocubriera por completo y se salte repintar
+        // lo que hay debajo cuando solo cambian sus hijos (acá, textoPreguntaLbl al terminar el
+        // test) — el resultado es el texto "fantasma" superpuesto detrás del encabezado.
+        JPanel encabezado = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(new Color(36, 91, 168, 221));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        encabezado.setOpaque(false);
         encabezado.setBorder(new EmptyBorder(24, 32, 12, 32));
         encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
 
@@ -89,15 +100,23 @@ public class VentanaTest extends VentanaBase {
         bloqueTitulo.setOpaque(false);
         bloqueTitulo.setLayout(new BoxLayout(bloqueTitulo, BoxLayout.Y_AXIS));
 
-        JLabel tituloLbl = new JLabel("📝  Test: " + curso.getTitulo());
+        // Ícono real del curso (mismo componente que VentanaContenidoCurso) en vez de un emoji
+        // suelto en el texto: "📝" no está garantizado en todas las fuentes del sistema y caía a
+        // un glifo vacío — mismo criterio que DialogoPersonalizado con sus íconos vectoriales.
+        JPanel filaTitulo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filaTitulo.setOpaque(false);
+        filaTitulo.setAlignmentX(LEFT_ALIGNMENT);
+        filaTitulo.add(IconoCurso.crearEtiqueta(curso, 36));
+        JLabel tituloLbl = new JLabel("Test: " + curso.getTitulo());
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
         tituloLbl.setForeground(Color.WHITE);
+        filaTitulo.add(tituloLbl);
 
         textoPreguntaLbl = new JLabel("Pregunta 1 de " + preguntas.size());
         textoPreguntaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
         textoPreguntaLbl.setForeground(new Color(200, 220, 255));
 
-        bloqueTitulo.add(tituloLbl);
+        bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
         bloqueTitulo.add(textoPreguntaLbl);
 
@@ -108,8 +127,12 @@ public class VentanaTest extends VentanaBase {
             alVolver.run();
         });
 
+        panelBotonesEncabezado = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        panelBotonesEncabezado.setOpaque(false);
+        panelBotonesEncabezado.add(botonVolverEncabezado);
+
         fila1.add(bloqueTitulo, BorderLayout.WEST);
-        fila1.add(botonVolverEncabezado, BorderLayout.EAST);
+        fila1.add(panelBotonesEncabezado, BorderLayout.EAST);
 
         encabezado.add(fila1);
         encabezado.add(Box.createVerticalStrut(12));
@@ -287,12 +310,42 @@ public class VentanaTest extends VentanaBase {
             ? "¡Aprobaste con " + puntaje + " / 100!"
             : "No aprobaste  ·  " + puntaje + " / 100");
         barraProgreso.setProgreso(preguntas.size(), preguntas.size());
-        botonVolverEncabezado.setText("Volver");
+        actualizarBotonesEncabezado(aprobado, puntaje);
 
         panelPreguntas.removeAll();
         panelPreguntas.add(construirResultados(puntaje, aprobado), BorderLayout.CENTER);
         panelPreguntas.revalidate();
         panelPreguntas.repaint();
+    }
+
+    /** Al terminar el test, el "Cancelar" del encabezado deja de tener sentido: si aprobó, se
+     * reemplaza por "Ver Certificado" + "Ir a Mis Cursos"; si no, sigue habiendo un solo botón
+     * para volver (no hay certificado que mostrar todavía). */
+    private void actualizarBotonesEncabezado(boolean aprobado, int puntaje) {
+        panelBotonesEncabezado.removeAll();
+        if (aprobado) {
+            JButton botonCertificado = FabricaUI.crearBotonSecundarioPequeno("Ver Certificado");
+            botonCertificado.addActionListener(e ->
+                new VentanaCertificado(curso, nombreUsuario, puntaje).setVisible(true));
+
+            // A diferencia de alVolver (que vuelve a VentanaContenidoCurso, de donde se entró al
+            // test), este botón va directo a la pestaña "Mis Cursos" — mismo patrón de navegación
+            // que VentanaContenidoCurso.abrirTest()/VentanaMisCursos al entrar a un curso.
+            JButton botonMisCursos = FabricaUI.crearBotonSecundarioPequeno("Ir a Mis Cursos", IconoVectorial.Tipo.VOLVER);
+            botonMisCursos.addActionListener(e -> {
+                if (!iniciarTransicionUnica()) return;
+                dispose();
+                new VentanaMisCursos(emailUsuario).setVisible(true);
+            });
+
+            panelBotonesEncabezado.add(botonCertificado);
+            panelBotonesEncabezado.add(botonMisCursos);
+        } else {
+            botonVolverEncabezado.setText("Volver");
+            panelBotonesEncabezado.add(botonVolverEncabezado);
+        }
+        panelBotonesEncabezado.revalidate();
+        panelBotonesEncabezado.repaint();
     }
 
     private Component construirResultados(int puntaje, boolean aprobado) {
