@@ -45,7 +45,7 @@ public class DialogoFormItemPlanEstudio extends JDialog {
 
     private void construirUI(JFrame padre) {
         JPanel raiz = new JPanel(new GridBagLayout());
-        raiz.setBackground(Color.WHITE);
+        raiz.setBackground(EstiloUI.FONDO_SUAVE);
         raiz.setBorder(new EmptyBorder(28, 32, 24, 32));
         setContentPane(raiz);
 

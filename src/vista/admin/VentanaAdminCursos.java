@@ -74,14 +74,14 @@ public class VentanaAdminCursos extends VentanaBase {
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
         JPanel panelTabla = new JPanel(new BorderLayout());
-        panelTabla.setBackground(new Color(245, 248, 252));
+        panelTabla.setBackground(EstiloUI.FONDO_SUAVE);
         panelTabla.setBorder(new EmptyBorder(16, 24, 24, 24));
         panelTabla.add(construirBarraSuperior(), BorderLayout.NORTH);
         panelTabla.add(construirTabla(), BorderLayout.CENTER);
         fijarAnchoPanel(panelTabla, ANCHO_TABLA);
 
         panelPlanEstudio = new JPanel(new BorderLayout());
-        panelPlanEstudio.setBackground(new Color(245, 248, 252));
+        panelPlanEstudio.setBackground(EstiloUI.FONDO_SUAVE);
         panelPlanEstudio.setBorder(new EmptyBorder(16, 24, 24, 24));
         fijarAnchoPanel(panelPlanEstudio, ANCHO_LISTA);
         mostrarPlaceholderPlanEstudio();
@@ -153,7 +153,7 @@ public class VentanaAdminCursos extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -538,14 +538,14 @@ public class VentanaAdminCursos extends VentanaBase {
     private static final Border BORDE_FILA_ITEM = new EmptyBorder(10, 14, 10, 10);
 
     private JPanel construirFilaItem(ItemPlanEstudio item) {
-        // Fondo blanco plano, sin la sombra de FabricaUI.crearTarjeta(): con las filas tan
+        // Fondo plano, sin la sombra de FabricaUI.crearTarjeta(): con las filas tan
         // juntas (8px de separación) esa sombra se encimaba entre una fila y la siguiente y
         // se veía como un borde continuo envolviendo toda la lista.
         JPanel fila = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
                 g2.dispose();
             }

@@ -169,8 +169,16 @@ de esta base, donde algunos procedures tomaban el título).
 
 # Command line (el código ahora vive en paquetes, hay que listar todos los .java):
 find src -name "*.java" > sources.txt
-javac -cp "lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar" -d out/production/EducG @sources.txt
+javac -encoding UTF-8 -cp "lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar;lib/rsyntaxtextarea-3.5.1.jar" -d out/production/EducG @sources.txt
 ```
+
+`-encoding UTF-8` es obligatorio: el código tiene identificadores/comentarios en español
+(ñ, tildes) y en Windows `javac` por defecto usa windows-1252, lo que tira `illegal
+character`/`unmappable character` al compilar sin ese flag. Si además ves
+`UnsupportedClassVersionError` al ejecutar, es que `out/production/EducG` quedó compilado
+con un JDK más nuevo que el `java` que estás usando para correr (el proyecto es Java 11,
+`.idea/misc.xml` fija `project-jdk-name="temurin-11"`) — recompilá con el `javac` de Java 11
+para regenerar los `.class`, o ejecutá con el mismo JDK con el que se compiló.
 
 ### Run
 
@@ -178,12 +186,15 @@ javac -cp "lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar" -d out/product
 # IntelliJ: Right-click Main.java > Run (or Shift+F10)
 
 # Command line:
-java -cp "out/production/EducG;lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar" Main
+java -cp "out/production/EducG;lib/mysql-connector-j-8.3.0.jar;lib/json-20240303.jar;lib/rsyntaxtextarea-3.5.1.jar" Main
 ```
 
 `lib/json-20240303.jar` (org.json) se agregó para el chatbot — arma/parsea el JSON de las
-llamadas HTTP a la API de Claude. Sin dependencias transitivas, igual que
-`mysql-connector-j-8.3.0.jar`; agregalo también en IntelliJ (Project Structure > Libraries).
+llamadas HTTP a la API de Claude. `lib/rsyntaxtextarea-3.5.1.jar` (com.fifesoft) se agregó
+para el editor de código del paso de ejercicio (`vista.componentes.PanelEditorCodigo`, ver
+"Circuito de clases con ejercicio propuesto"). Ambos son jars autocontenidos, sin
+dependencias transitivas, igual que `mysql-connector-j-8.3.0.jar`; agregalos también en
+IntelliJ (Project Structure > Libraries).
 
 ### Configure Database Connection
 
@@ -291,12 +302,41 @@ lección que tenga `ejercicio_propuesto` no vacío (`Leccion.tieneEjercicio()`),
 de ejercicio para esa misma lección. El botón "Siguiente" avanza un paso a la vez; si el paso
 actual es un ejercicio sin resolver (`ejerciciosResueltos`, un `Set<Integer>` en memoria, vive
 solo mientras la ventana está abierta), el botón queda **deshabilitado** hasta que el alumno
-escribe la respuesta correcta en el campo de texto y hace clic en "Verificar"
-(`ControladorCursos.verificarRespuestaEjercicio()`, comparación case-insensitive e
-ignorando espacios extra contra `Leccion.getRespuestaEsperada()`, sin acceso a la base — es
-lógica pura). Si una lección no tiene ejercicio, el paso de ejercicio simplemente no existe en
-la lista y "Siguiente" pasa directo a la próxima lección. El último paso (sea lección o
-ejercicio) muestra "Hacer Test" en vez de "Siguiente →".
+escribe la respuesta correcta en el editor de código y hace clic en "Verificar"
+(`ControladorCursos.evaluarEjercicio()`). Si una lección no tiene ejercicio, el paso de
+ejercicio simplemente no existe en la lista y "Siguiente" pasa directo a la próxima lección.
+El último paso (sea lección o ejercicio) muestra "Hacer Test" en vez de "Siguiente →".
+
+Mientras el ejercicio no está resuelto, `VentanaContenidoCurso.construirFilaEjercicioYCodigo()`
+muestra el enunciado y el código del alumno lado a lado: el enunciado en una caja angosta
+(`EstiloUI.ANCHO_ENUNCIADO_EJERCICIO`) y, a la derecha, `vista.componentes.PanelEditorCodigo`
+(`EstiloUI.ANCHO_EDITOR_CODIGO` de ancho) — un editor multilínea real (RSyntaxTextArea, con
+numeración de línea) en vez del `JTextField` de una sola línea de versiones anteriores. Ambas
+cajas comparten el mismo alto (`alturaCajaEstandar()`, 40% de la pantalla) para quedar
+alineadas. El editor no colorea por lenguaje todavía (`SyntaxConstants.SYNTAX_STYLE_NONE`
+fijo) — no hay ningún campo en `curso_contenidos`/`Leccion` que indique el lenguaje de un
+ejercicio puntual, así que cualquier heurística por título de curso sería poco confiable (p.
+ej. el curso "Desarrollo Web Full Stack" no menciona "React" en el título pero tiene
+ejercicios en JSX). Resaltado por lenguaje y ejecución real del código quedan pendientes para
+cuando se agregue esa columna, junto con la fase de ejecución de código (que también la
+necesita).
+
+`ControladorCursos.evaluarEjercicio()` primero intenta el camino rápido y gratis
+(`verificarRespuestaEjercicio()`, comparación case-insensitive e ignorando espacios extra
+—incluye saltos de línea, `\s+` los colapsa igual que espacios— contra
+`Leccion.getRespuestaEsperada()`, sin acceso a la base). Si no coincide textualmente, delega
+en `servicio.ServicioEvaluacionEjercicio`, que reusa el mismo motor configurable de Robotito
+(`chatbot.FabricaMotorChatbot.obtenerMotor()`) para juzgar si la respuesta del alumno resuelve
+el ejercicio de todas formas (útil para código válido escrito distinto a la referencia, como
+el ejemplo de JSX de arriba) — por eso ese camino requiere `CHATBOT_API_KEY` configurada en
+`.env`; sin ella, un ejercicio que no matchee exacto muestra el mismo error amigable que ya
+muestra el chatbot al no tener key configurada. La llamada corre en un `SwingWorker`
+(`VentanaContenidoCurso.construirColumnaEditor()`, mismo patrón que
+`VentanaChatFlotante.manejarEnviar()`) que deshabilita el botón "Verificar" y el editor
+mientras espera, para no bloquear el EDT con la llamada de red. El feedback que la IA
+devuelve (varias líneas, formato `CORRECTO`/`INCORRECTO` + explicación en la primera/las
+siguientes líneas) no se persiste en la base — es una evaluación al vuelo, no queda registro
+de intentos evaluados por IA todavía.
 
 **Progreso persistido:** `inscripciones.leccion_actual` sigue significando índice de *lección*
 (0-based), no de paso — al guardar progreso siempre se persiste `pasos.get(pasoActual)

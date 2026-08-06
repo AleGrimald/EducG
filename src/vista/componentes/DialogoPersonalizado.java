@@ -77,7 +77,7 @@ public class DialogoPersonalizado extends JDialog {
                 g2.setColor(new Color(0, 0, 0, 30));
                 g2.fill(new RoundRectangle2D.Float(3, 5, getWidth() - 4, getHeight() - 5, 20, 20));
 
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 5, 20, 20));
 
                 g2.dispose();

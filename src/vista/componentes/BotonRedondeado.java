@@ -24,7 +24,6 @@ public class BotonRedondeado extends JButton {
     /** NORMAL = acciones principales (formularios, tarjetas). PEQUENO = encabezados y filas compactas. */
     public enum Tamano { NORMAL, PEQUENO }
 
-    private static final Color CONTORNO_HOVER_BG = new Color(236, 245, 253);
     private static final int   AJUSTE_HOVER = 30;
     private static final int   AJUSTE_PRESIONADO = 40;
     private static final int   RELLENO_HORIZONTAL = 24;
@@ -100,7 +99,9 @@ public class BotonRedondeado extends JButton {
             g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), radio, radio));
             colorTexto = Color.WHITE;
         } else {
-            g2.setColor(getModel().isRollover() ? CONTORNO_HOVER_BG : Color.WHITE);
+            g2.setColor(getModel().isRollover()
+                ? EstiloUI.aclarar(EstiloUI.FONDO_SUAVE, 15)
+                : EstiloUI.FONDO_SUAVE);
             g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), radio, radio));
             g2.setColor(colorBase);
             g2.setStroke(new BasicStroke(1.5f));

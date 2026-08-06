@@ -49,7 +49,7 @@ public class VentanaAdminEstadisticas extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();

@@ -115,7 +115,7 @@ public class VentanaCrearCurso extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -126,7 +126,7 @@ public class VentanaCrearCurso extends VentanaBase {
 
         indicadorPaso = new JLabel();
         indicadorPaso.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        indicadorPaso.setForeground(new Color(180, 210, 255));
+        indicadorPaso.setForeground(EstiloUI.TEXTO_SECUNDARIO);
 
         bloqueTitulo.add(appLbl);
         bloqueTitulo.add(indicadorPaso);

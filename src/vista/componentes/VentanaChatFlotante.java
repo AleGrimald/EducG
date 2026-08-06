@@ -40,7 +40,10 @@ public class VentanaChatFlotante extends JDialog {
         }
 
         setUndecorated(true);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        // Se oculta al cerrar en vez de destruirse: la ventana (y la conversación en
+        // memoria de ControladorChatbot) se reusa la próxima vez que se abre, en vez de
+        // perder el historial cada vez que se cierra el chat.
+        setDefaultCloseOperation(HIDE_ON_CLOSE);
         setSize(EstiloUI.ANCHO_VENTANA_CHAT, EstiloUI.ALTO_VENTANA_CHAT);
         setResizable(false);
         setAlwaysOnTop(true);
@@ -140,7 +143,7 @@ public class VentanaChatFlotante extends JDialog {
         botonCerrar.setContentAreaFilled(false);
         botonCerrar.setFocusPainted(false);
         botonCerrar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        botonCerrar.addActionListener(e -> animarSalida());
+        botonCerrar.addActionListener(e -> minimizar());
 
         encabezado.add(bloqueTitulo, BorderLayout.WEST);
         encabezado.add(botonCerrar, BorderLayout.EAST);
@@ -242,7 +245,7 @@ public class VentanaChatFlotante extends JDialog {
         fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         Color fondoBurbuja = esUsuario ? EstiloUI.AZUL_CLARO : EstiloUI.FONDO_BLANCO;
-        Color colorTexto = esUsuario ? Color.WHITE : EstiloUI.TEXTO_PRIMARIO;
+        Color colorTexto = esUsuario ? Color.WHITE : EstiloUI.AZUL_OSCURO;
 
         JLabel mensajeLbl = new JLabel(
             "<html><body style='width: 200px; color: " + colorAHex(colorTexto) + "'>" + escaparHtml(texto) + "</body></html>");
@@ -297,7 +300,17 @@ public class VentanaChatFlotante extends JDialog {
         timer.start();
     }
 
-    private void animarSalida() {
+    /** Reabre la ventana ya construida (misma instancia, mismo historial de mensajes en pantalla
+     *  y en {@link ControladorChatbot}) con la misma animación de entrada que el primer open. */
+    public void restaurar() {
+        toFront();
+        animarEntrada();
+    }
+
+    /** "Cierra" el chat minimizándolo: lo oculta con un fade-out pero no lo destruye, así el
+     *  historial de la conversación (visual y en {@link ControladorChatbot}) se conserva para
+     *  la próxima vez que se abra — ver {@link #restaurar()}. */
+    private void minimizar() {
         Timer timer = new Timer(10, null);
         final float[] opacidad = {1f};
         timer.addActionListener(e -> {
@@ -305,7 +318,7 @@ public class VentanaChatFlotante extends JDialog {
             if (opacidad[0] <= 0f) {
                 opacidad[0] = 0f;
                 ((Timer) e.getSource()).stop();
-                dispose();
+                setVisible(false);
             }
             setOpacity(opacidad[0]);
         });

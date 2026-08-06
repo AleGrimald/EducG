@@ -1,11 +1,14 @@
 package controlador;
 
+import chatbot.MotorChatbotException;
 import dao.CursoDAOJdbc;
 import dao.InscripcionDAOJdbc;
 import dao.UsuarioDAOJdbc;
 import modelo.Curso;
+import modelo.ResultadoEvaluacionEjercicio;
 import modelo.Usuario;
 import servicio.ServicioCursos;
+import servicio.ServicioEvaluacionEjercicio;
 import servicio.ServicioInscripcion;
 import servicio.ServicioUsuario;
 
@@ -18,6 +21,7 @@ public class ControladorCursos {
     private final ServicioCursos servicioCursos = new ServicioCursos(new CursoDAOJdbc());
     private final ServicioInscripcion servicioInscripcion = new ServicioInscripcion(new InscripcionDAOJdbc());
     private final ServicioUsuario servicioUsuario = new ServicioUsuario(new UsuarioDAOJdbc());
+    private final ServicioEvaluacionEjercicio servicioEvaluacionEjercicio = new ServicioEvaluacionEjercicio();
 
     public List<Curso> obtenerCatalogo() throws SQLException {
         return servicioCursos.obtenerCatalogo();
@@ -49,6 +53,16 @@ public class ControladorCursos {
     public boolean verificarRespuestaEjercicio(String respuestaAlumno, String respuestaEsperada) {
         if (respuestaAlumno == null || respuestaEsperada == null) return false;
         return normalizar(respuestaAlumno).equals(normalizar(respuestaEsperada));
+    }
+
+    /** Camino rápido (gratis) si coincide textualmente con la respuesta esperada; si no, la IA
+     * juzga si la respuesta del alumno resuelve el ejercicio de todas formas. */
+    public ResultadoEvaluacionEjercicio evaluarEjercicio(String codigoAlumno, String enunciado, String respuestaEsperada)
+            throws MotorChatbotException {
+        if (verificarRespuestaEjercicio(codigoAlumno, respuestaEsperada)) {
+            return new ResultadoEvaluacionEjercicio(true, "¡Coincide con la respuesta esperada!");
+        }
+        return servicioEvaluacionEjercicio.evaluar(enunciado, respuestaEsperada, codigoAlumno);
     }
 
     private String normalizar(String texto) {

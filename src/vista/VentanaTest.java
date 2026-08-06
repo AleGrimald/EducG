@@ -74,22 +74,9 @@ public class VentanaTest extends VentanaBase {
     }
 
     private JPanel construirEncabezado() {
-        // Mismo azul que el encabezado de VentanaContenidoCurso (de donde se entra al test) —
-        // el texto/la barra de progreso de acá abajo están pensados para ese fondo oscuro
-        // (blanco/celeste claro, track semitransparente blanco); con el fondo clarito del
-        // módulo admin (240,245,250) quedaban casi invisibles.
-        // setOpaque(false) + relleno a mano en paintComponent (en vez de setOpaque(true) con un
-        // Color de alpha<255 como fondo): marcar un panel "opaco" con un color translúcido hace
-        // que el RepaintManager lo trate como si se autocubriera por completo y se salte repintar
-        // lo que hay debajo cuando solo cambian sus hijos (acá, textoPreguntaLbl al terminar el
-        // test) — el resultado es el texto "fantasma" superpuesto detrás del encabezado.
-        JPanel encabezado = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
-                g.setColor(new Color(36, 91, 168, 221));
-                g.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        encabezado.setOpaque(false);
+        JPanel encabezado = new JPanel(new BorderLayout());
+        encabezado.setOpaque(true);
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 12, 32));
         encabezado.setLayout(new BoxLayout(encabezado, BoxLayout.Y_AXIS));
 
@@ -109,12 +96,12 @@ public class VentanaTest extends VentanaBase {
         filaTitulo.add(IconoCurso.crearEtiqueta(curso, 36));
         JLabel tituloLbl = new JLabel("Test: " + curso.getTitulo());
         tituloLbl.setFont(EstiloUI.FUENTE_TITULO_COMPACTO);
-        tituloLbl.setForeground(Color.WHITE);
+        tituloLbl.setForeground(EstiloUI.TEXTO_PRIMARIO);
         filaTitulo.add(tituloLbl);
 
         textoPreguntaLbl = new JLabel("Pregunta 1 de " + preguntas.size());
         textoPreguntaLbl.setFont(EstiloUI.FUENTE_SUBTITULO_COMPACTO);
-        textoPreguntaLbl.setForeground(new Color(200, 220, 255));
+        textoPreguntaLbl.setForeground(EstiloUI.TEXTO_SECUNDARIO);
 
         bloqueTitulo.add(filaTitulo);
         bloqueTitulo.add(Box.createVerticalStrut(4));
@@ -146,10 +133,10 @@ public class VentanaTest extends VentanaBase {
 
     private Component construirPreguntas() {
         JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        contenedorCentral.setBackground(new Color(245, 248, 252));
+        contenedorCentral.setBackground(EstiloUI.FONDO_SUAVE);
 
         JPanel contenido = new JPanel();
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
         contenido.setBorder(new EmptyBorder(20, 32, 20, 32));
 
@@ -221,7 +208,7 @@ public class VentanaTest extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 15));
                 g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
                 g2.dispose();
             }
@@ -350,10 +337,10 @@ public class VentanaTest extends VentanaBase {
 
     private Component construirResultados(int puntaje, boolean aprobado) {
         JPanel contenedorCentral = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        contenedorCentral.setBackground(new Color(245, 248, 252));
+        contenedorCentral.setBackground(EstiloUI.FONDO_SUAVE);
 
         JPanel contenido = new JPanel();
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
         contenido.setBorder(new EmptyBorder(20, 32, 20, 32));
 
@@ -390,7 +377,7 @@ public class VentanaTest extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 15));
                 g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
                 g2.dispose();
             }
@@ -438,7 +425,7 @@ public class VentanaTest extends VentanaBase {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0, 0, 0, 15));
                 g2.fill(new RoundRectangle2D.Float(2, 3, getWidth() - 3, getHeight() - 3, 12, 12));
-                g2.setColor(Color.WHITE);
+                g2.setColor(EstiloUI.FONDO_SUAVE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 3, getHeight() - 4, 12, 12));
                 g2.dispose();
             }

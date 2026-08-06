@@ -53,7 +53,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
         raiz.add(construirEncabezado(), BorderLayout.NORTH);
 
         JPanel contenido = new JPanel(new BorderLayout());
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setBorder(new EmptyBorder(16, 24, 24, 24));
 
 
@@ -111,7 +111,7 @@ public class VentanaAdminAlumnos extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();

@@ -5,6 +5,7 @@ import modelo.CursoAdmin;
 import vista.componentes.DialogoPersonalizado;
 import vista.componentes.IconoVectorial;
 import vista.componentes.SelectorIconoCurso;
+import vista.estilo.EstiloUI;
 import vista.estilo.FabricaUI;
 
 import javax.swing.*;
@@ -34,7 +35,7 @@ public class DialogoFormCurso extends JDialog {
 
     private void construirUI(JFrame padre) {
         JPanel raiz = new JPanel(new GridBagLayout());
-        raiz.setBackground(Color.WHITE);
+        raiz.setBackground(EstiloUI.FONDO_SUAVE);
         raiz.setBorder(new EmptyBorder(28, 32, 24, 32));
         setContentPane(raiz);
 

@@ -49,7 +49,7 @@ public class VentanaMisDatos extends VentanaBase {
     private JPanel construirEncabezado() {
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setOpaque(true);
-        encabezado.setBackground(new Color(240, 245, 250));
+        encabezado.setBackground(EstiloUI.FONDO_SUAVE);
         encabezado.setBorder(new EmptyBorder(24, 32, 16, 32));
 
         JPanel bloqueTitulo = new JPanel();
@@ -91,7 +91,7 @@ public class VentanaMisDatos extends VentanaBase {
 
         // Panel principal de contenido
         JPanel contenido = new JPanel();
-        contenido.setBackground(new Color(245, 248, 252));
+        contenido.setBackground(EstiloUI.FONDO_SUAVE);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
         contenido.setBorder(new EmptyBorder(24, 40, 24, 40));
 
